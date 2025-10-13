@@ -86,6 +86,9 @@ export default function Authenticated({
                                         <Dropdown.Link href={route('users.index')}>
                                             Users
                                         </Dropdown.Link>
+                                        <Dropdown.Link href={route('categories.index')}>
+                                            Categories
+                                        </Dropdown.Link>
                                         <hr className="my-1 border-gray-200" />
                                         <Dropdown.Link href={route('profile.edit')}>
                                             Profile

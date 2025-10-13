@@ -16,7 +16,7 @@ class Category extends Model
         return $this->hasMany(SubCategory::class);
     }
 
-    public function documenten()
+    public function documents()
     {
         return $this->hasMany(Document::class);
     }

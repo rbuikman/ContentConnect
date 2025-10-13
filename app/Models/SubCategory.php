@@ -16,7 +16,7 @@ class SubCategory extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function documenten()
+    public function documents()
     {
         return $this->hasMany(Document::class);
     }

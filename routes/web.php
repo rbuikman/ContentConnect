@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DmsController;
+use App\Http\Controllers\SubCategoriesController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -12,14 +13,7 @@ Route::get('/cache-clear', function() {
     Artisan::call('view:clear');
 });
 
-Route::get('/', function () {
-    return Inertia::render('Dms', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+Route::get('/', [\App\Http\Controllers\DocumentsController::class, 'index'])->name('documents.index');
 
 Route::get('/main', [DmsController::class, 'index'])
     ->middleware(['auth'])
@@ -79,17 +73,45 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('documents')->group(function () {
-        Route::get('/', [\App\Http\Controllers\DocumentsController::class, 'index'])->name('documents.index');
+            Route::get('/', [\App\Http\Controllers\DocumentsController::class, 'index'])->name('documents.index');
 
-        Route::get('/create', [\App\Http\Controllers\DocumentsController::class, 'create']);
+            Route::get('/create', [\App\Http\Controllers\DocumentsController::class, 'create']);
 
-        Route::get('/{id}', [\App\Http\Controllers\DocumentsController::class, 'edit']);
+            Route::get('/{id}', [\App\Http\Controllers\DocumentsController::class, 'edit']);
 
-        Route::post("/", [\App\Http\Controllers\DocumentsController::class, 'store']);
+            Route::post("/", [\App\Http\Controllers\DocumentsController::class, 'store']);
 
-        Route::put("/{id}", [\App\Http\Controllers\DocumentsController::class, 'update']);
+            Route::put("/{id}", [\App\Http\Controllers\DocumentsController::class, 'update']);
 
-        Route::delete("/{id}", [\App\Http\Controllers\DocumentsController::class, 'destroy']);
+            Route::delete("/{id}", [\App\Http\Controllers\DocumentsController::class, 'destroy']);
+    });
+
+    Route::prefix('categories')->group(function () {
+        Route::get('/', [\App\Http\Controllers\CategoriesController::class, 'index'])->name('categories.index');
+
+            Route::get('/create', [\App\Http\Controllers\CategoriesController::class, 'create']);
+
+            Route::get('/{id}', [\App\Http\Controllers\CategoriesController::class, 'edit']);
+
+            Route::post("/", [\App\Http\Controllers\CategoriesController::class, 'store']);
+
+            Route::put("/{id}", [\App\Http\Controllers\CategoriesController::class, 'update']);
+
+            Route::delete("/{id}", [\App\Http\Controllers\CategoriesController::class, 'destroy']);
+    });
+
+    Route::prefix('subcategories')->group(function () {
+        Route::get('/', [\App\Http\Controllers\SubCategoriesController::class, 'index'])->name('subcategories.index');
+
+            Route::get('/create', [\App\Http\Controllers\SubCategoriesController::class, 'create']);
+
+            Route::get('/{id}', [\App\Http\Controllers\SubCategoriesController::class, 'edit']);
+
+            Route::post("/", [\App\Http\Controllers\SubCategoriesController::class, 'store']);
+
+            Route::put("/{id}", [\App\Http\Controllers\SubCategoriesController::class, 'update']);
+
+            Route::delete("/{id}", [\App\Http\Controllers\SubCategoriesController::class, 'destroy']);
     });
 });
 

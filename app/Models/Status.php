@@ -12,7 +12,7 @@ class Status extends Model
 
     protected $fillable = ['name'];
 
-    public function documenten()
+    public function documents()
     {
         return $this->hasMany(Document::class);
     }

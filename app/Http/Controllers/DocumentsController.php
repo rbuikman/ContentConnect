@@ -15,7 +15,7 @@ class DocumentsController extends Controller
     {
         $query = $request->input('search');
 
-        $documents = Document::with(['category', 'subcategory'])
+        $documents = Document::with(['category', 'subcategory', 'status']) // Added 'status' relationship
             ->when($query, function($q) use ($query) {
                 $q->where('order_number', 'like', "%{$query}%")
                 ->orWhere('file_name', 'like', "%{$query}%");
@@ -95,9 +95,13 @@ class DocumentsController extends Controller
         return redirect()->back()->with('success', 'Document updated successfully');
     }
 
-    public function destroy(Document $document)
+
+    public function destroy($id)
     {
+        $document = Document::findOrFail($id);
         $document->delete();
+
+        return redirect()->route('documents.index')->with('success', 'Document deleted successfully');
     }
 }
 
