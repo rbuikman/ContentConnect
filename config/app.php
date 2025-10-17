@@ -123,4 +123,18 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Webeditor Configuration
+    |--------------------------------------------------------------------------
+    |
+    | This value determines the base URL for the webeditor application.
+    | This is used to generate links to edit documents and templates.
+    |
+    */
+
+    'webeditor_url' => env('WEBEDITOR_URL', 'http://localhost/webeditor/webeditor.php'),
+    'webeditor_document_path' => env('WEBEDITOR_DOCUMENT_PATH', '/documents'),
+    'webeditor_template_path' => env('WEBEDITOR_TEMPLATE_PATH', '/templates'),
+
 ];

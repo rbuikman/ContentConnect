@@ -74,7 +74,8 @@ interface ListDocumentsProps {
   statuses: Status[]; // Add statuses to props
   templates: Template[]; // Add templates for document creation
   template?: boolean; // Add template parameter to determine context
-  webeditorUrl: string; // Add webeditor URL path from environment
+  webeditorUrl: string; // Add webeditor base URL from environment
+  webeditorDocumentPath: string; // Add webeditor document path from environment
 }
 
 interface FlashMessages {
@@ -94,7 +95,7 @@ const defaultFilters: DataTableFilterMeta = {
 };
 
 
-const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, categories, subcategories, templates, template = false, webeditorUrl }) => {
+const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, categories, subcategories, templates, template = false, webeditorUrl, webeditorDocumentPath }) => {
     const { flash, errors } = usePage().props as any;
     const [loading, setLoading] = useState<boolean>(true);
     const [globalFilterValue, setGlobalFilterValue] = useState<string>('');
@@ -459,7 +460,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 label=""
                 icon="pi pi-external-link"
                 className="p-button-sm p-button-outlined"
-                onClick={() => window.open(`http://localhost/webeditor/webeditor.php?document=${webeditorUrl}/${rowData.category.name}/${rowData.subcategory.name}/${rowData.file_name}`, '_blank')}
+                onClick={() => window.open(`${webeditorUrl}?document=${webeditorDocumentPath}/${rowData.category.name}/${rowData.subcategory.name}/${rowData.file_name}`, '_blank')}
             />            <Button
                 label=""
                 icon="pi pi-download"

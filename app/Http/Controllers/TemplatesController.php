@@ -43,7 +43,8 @@ class TemplatesController extends Controller
             'statuses' => Status::all(),
             'templates' => Document::where('template', true)->where('deleted', false)->get(['id', 'file_name']), // Add templates for selection
             'template' => true, // Pass template parameter for templates
-            'webeditorUrl' => env('CONTENTCONNECT_WEBEDITOR_TEMPLATES_URL', '/templates'), // Add webeditor URL path
+            'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
+            'webeditorDocumentPath' => config('app.webeditor_template_path'), // Add template path from config
         ]);
     }
 

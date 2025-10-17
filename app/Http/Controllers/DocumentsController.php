@@ -36,7 +36,8 @@ class DocumentsController extends Controller
             'statuses' => Status::all(),
             'templates' => Document::where('template', true)->where('deleted', false)->get(['id', 'file_name']), // Add templates for selection
             'template' => false, // Pass template parameter for documents
-            'webeditorUrl' => env('CONTENTCONNECT_WEBEDITOR_DOCUMENTS_URL', '/documents'), // Add webeditor URL path
+            'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
+            'webeditorDocumentPath' => config('app.webeditor_document_path'), // Add document path from config
         ]);
     }
 
