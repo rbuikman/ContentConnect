@@ -13,7 +13,9 @@ Route::get('/cache-clear', function() {
     Artisan::call('view:clear');
 });
 
-Route::get('/', [\App\Http\Controllers\DocumentsController::class, 'index'])->name('documents.index');
+Route::get('/', function () {
+    return redirect()->route('documents.index');
+});
 
 Route::get('/main', [DmsController::class, 'index'])
     ->middleware(['auth'])
@@ -55,7 +57,7 @@ Route::middleware('auth')->group(function () {
 
         Route::put("/{id}", [\App\Http\Controllers\RolesController::class, 'update']);
 
-        Route::delete("/{id}", [\App\Http\Controllers\RolesController::class, 'destroy']);
+        Route::delete("/{id}", [\App\Http\Controllers\RolesController::class, 'destroy'])->name('roles.destroy');
     });
 
     Route::prefix('users')->group(function () {
@@ -84,6 +86,22 @@ Route::middleware('auth')->group(function () {
             Route::put("/{id}", [\App\Http\Controllers\DocumentsController::class, 'update']);
 
             Route::delete("/{id}", [\App\Http\Controllers\DocumentsController::class, 'destroy']);
+    });
+
+    Route::prefix('templates')->group(function () {
+            Route::get('/', [\App\Http\Controllers\TemplatesController::class, 'index'])->name('templates.index');
+
+            Route::post('/read-from-storage', [\App\Http\Controllers\TemplatesController::class, 'readTemplatesFromStorage'])->name('templates.readFromStorage');
+
+            Route::get('/create', [\App\Http\Controllers\TemplatesController::class, 'create']);
+
+            Route::get('/{id}', [\App\Http\Controllers\TemplatesController::class, 'edit']);
+
+            Route::post("/", [\App\Http\Controllers\TemplatesController::class, 'store']);
+
+            Route::put("/{id}", [\App\Http\Controllers\TemplatesController::class, 'update']);
+
+            Route::delete("/{id}", [\App\Http\Controllers\TemplatesController::class, 'destroy']);
     });
 
     Route::prefix('categories')->group(function () {

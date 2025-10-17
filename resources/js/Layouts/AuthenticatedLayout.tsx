@@ -38,14 +38,6 @@ export default function Authenticated({
                                 </Link>
                             </div>
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={'/'}
-                                    active={route().current('/')}
-                                >
-                                    ContentConnect
-                                </NavLink>
-                            </div>
                         </div>
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
@@ -78,6 +70,9 @@ export default function Authenticated({
                                     <Dropdown.Content>
                                         <Dropdown.Link href={route('documents.index')}>
                                             Documents
+                                        </Dropdown.Link>
+                                        <Dropdown.Link href={route('templates.index')}>
+                                            Templates
                                         </Dropdown.Link>
                                         <hr className="my-1 border-gray-200" />
                                         <Dropdown.Link href={route('roles.index')}>

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FilterMatchMode } from 'primereact/api';
 import { DataTable, DataTableFilterMeta, DataTableRowEditCompleteEvent } from "primereact/datatable";
 import { Button } from "primereact/button";
 import { Column, ColumnEditorOptions, ColumnFilterElementTemplateOptions, ColumnBodyOptions } from 'primereact/column';
+import { Toast } from 'primereact/toast';
 import "primereact/resources/themes/saga-blue/theme.css";
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
@@ -13,7 +14,7 @@ import { InputIcon } from 'primereact/inputicon';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog'; // Import ConfirmDialog
 import { Tag } from 'primereact/tag';
 import { Dropdown, DropdownChangeEvent } from 'primereact/dropdown';
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import { Calendar } from 'primereact/calendar';
 import CreateDocumentModal from "./CreateDocumentModal";
 
@@ -33,6 +34,11 @@ interface Status {
   name: string;
 }
 
+interface Template {
+  id: number;
+  file_name: string;
+}
+
 interface Document {
   id: number;
   order_number: string;
@@ -41,6 +47,8 @@ interface Document {
   category: Category;
   subcategory: Subcategory;
   status: Status;
+  base_template?: Template; // Add baseTemplate relationship
+  template_id?: number; // Add template_id field
   created_by: string;
   created_at: string;
   modified_by?: string;
@@ -51,6 +59,12 @@ interface Document {
 
 interface DocumentsData {
   data: Document[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number;
+  to: number;
 }
 
 interface ListDocumentsProps {
@@ -58,6 +72,14 @@ interface ListDocumentsProps {
   categories: Category[];
   subcategories: Subcategory[];
   statuses: Status[]; // Add statuses to props
+  templates: Template[]; // Add templates for document creation
+  template?: boolean; // Add template parameter to determine context
+  webeditorUrl: string; // Add webeditor URL path from environment
+}
+
+interface FlashMessages {
+  success?: string;
+  error?: string;
 }
 
 const defaultFilters: DataTableFilterMeta = {
@@ -72,16 +94,55 @@ const defaultFilters: DataTableFilterMeta = {
 };
 
 
-const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, categories, subcategories }) => {
+const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, categories, subcategories, templates, template = false, webeditorUrl }) => {
+    const { flash, errors } = usePage().props as any;
     const [loading, setLoading] = useState<boolean>(true);
     const [globalFilterValue, setGlobalFilterValue] = useState<string>('');
     const [filters, setFilters] = useState<DataTableFilterMeta>(defaultFilters);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const toast = useRef<Toast>(null);
 
     useEffect(() => {
         setLoading(false);
         initFilters();
+        setCurrentPage(documents.current_page);
+        
+        // Get search value from URL parameters if it exists
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchParam = urlParams.get('search');
+        if (searchParam) {
+            setGlobalFilterValue(searchParam);
+        }
     }, []);
+
+    // Show toast messages when flash messages change
+    useEffect(() => {
+        if (flash?.success) {
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Success',
+                detail: flash.success,
+                life: 5000
+            });
+        }
+        if (flash?.error) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: flash.error,
+                life: 5000
+            });
+        }
+        if (errors?.error) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: errors.error,
+                life: 5000
+            });
+        }
+    }, [flash, errors]);
 
     const initFilters = () => {
         setFilters(defaultFilters);
@@ -108,6 +169,20 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         }
     };
 
+    const onPageChange = (event: any) => {
+        const page = event.page + 1; // PrimeReact uses 0-based indexing, Laravel uses 1-based
+        setCurrentPage(page);
+        
+        // Use Inertia to navigate to the new page
+        router.get(window.location.pathname, { 
+            page: page,
+            search: globalFilterValue 
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
     const onRowEditComplete = (e: DataTableRowEditCompleteEvent) => {
         let _documents = [...documents.data];
         let { newData, index } = e;
@@ -115,16 +190,21 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         newData.status_id = newData.status.id; // Ensure status_id is set correctly
         newData.category_id = newData.category?.id; // Ensure category_id is set correctly
         newData.sub_category_id = newData.subcategory?.id; // Ensure subcategory_id is set correctly
+        
+        // Ensure order_number exists for templates (set to empty string if not present)
+        if (template && !newData.order_number) {
+            newData.order_number = '';
+        }
 
         _documents[index] = newData as Document;
 
-        router.put(`/documents/${newData.id}`, newData, {
+        router.put(`/${template ? 'templates' : 'documents'}/${newData.id}`, newData, {
             onSuccess: () => {
-                console.log('Document updated successfully');
+                console.log(`${template ? 'Template' : 'Document'} updated successfully`);
                 documents.data = _documents; // Update the current documents state
             },
             onError: (errors) => {
-                console.error('Error updating document:', errors);
+                console.error(`Error updating ${template ? 'template' : 'document'}:`, errors);
             }
         });
     };
@@ -147,6 +227,14 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
 
     const statusBodyTemplate = (rowData: Document) => {
         return <Tag value={rowData.status.name} severity={getSeverity(rowData.status)} />;
+    };
+
+    const templateBodyTemplate = (rowData: Document) => {
+        return rowData.base_template ? (
+            <span className="text-blue-600">{rowData.base_template.file_name}</span>
+        ) : (
+            <span className="text-gray-400">No template</span>
+        );
     };
 
     const statusFilterTemplate = (options: ColumnFilterElementTemplateOptions) => {
@@ -188,28 +276,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
       }
     }
 
-    const categoryEditor = (options: ColumnEditorOptions) => {
-        return (
-            <Dropdown
-                value={options.value} // Pass the current value directly
-                options={categories}
-                onChange={(e: DropdownChangeEvent) => {
-                    options.editorCallback!(e.value); // Update the category value
 
-                    // Trigger an update to the subcategories when the category changes
-                    const updatedSubcategories = subcategories.filter(
-                        (subcategory) => subcategory.category_id === e.value?.id
-                    );
-
-                }}
-                placeholder="Select a Category"
-                optionLabel="name" // Ensure the dropdown displays the category name
-                itemTemplate={(option) => {
-                    return <p>{option.name}</p>;
-                }}
-            />
-        );
-    };
 
     const categoryFilterTemplate = (options: ColumnFilterElementTemplateOptions) => {
         return (
@@ -250,28 +317,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
       }
     }
 
-    const getFilteredSubcategories = (categoryId: number | undefined) => {
-        return subcategories.filter(
-            (subcategory) => subcategory.category_id === categoryId // Filter by the current category
-        );
-    };
 
-    const subCategoryEditor = (options: ColumnEditorOptions) => {
-        const filteredSubcategories = getFilteredSubcategories(options.rowData.category?.id); // Get filtered subcategories
-
-        return (
-            <Dropdown
-                value={options.value} // Pass the current value directly
-                options={filteredSubcategories} // Use filtered subcategories
-                onChange={(e: DropdownChangeEvent) => options.editorCallback!(e.value)}
-                placeholder="Select a Sub category"
-                optionLabel="name" // Ensure the dropdown displays the subcategory name
-                itemTemplate={(option) => {
-                    return <p>{option.name}</p>;
-                }}
-            />
-        );
-    };
 
     const subCategoryFilterTemplate = (options: ColumnFilterElementTemplateOptions) => {
         return (
@@ -307,14 +353,32 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     const renderHeader = () => {
 
         return (
-          
-            <div className="flex justify-content-end" style={{ textAlign: 'right' }}>
-              <button
-            onClick={() => setShowCreateModal(true)}
-            className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
-          >
-            Create&nbsp;Document
-            </button>
+
+            <div className="flex justify-content-end" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+              {template ? (
+                <button
+                  onClick={() => {
+                    router.post('/templates/read-from-storage', {}, {
+                      onSuccess: () => {
+                        // Template import completed successfully
+                      },
+                      onError: (errors) => {
+                        console.error('Error reading templates from storage:', errors);
+                      }
+                    });
+                  }}
+                  className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+                >
+                  Update Templates from storage
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+                >
+                  Create&nbsp;Document
+                </button>
+              )}
                 <IconField iconPosition="left">
                     <InputIcon className="pi pi-search" />
                     <InputText type="search" value={globalFilterValue || ''} onChange={(e) => onGlobalFilterChange(e)} placeholder="Search" />
@@ -323,15 +387,35 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         );
     };
 
+    // Simple debounce function
+    const debounce = (func: Function, delay: number) => {
+        let timeoutId: NodeJS.Timeout;
+        return (...args: any[]) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(null, args), delay);
+        };
+    };
+
+    // Debounced search function
+    const debouncedSearch = useCallback(
+        debounce((searchValue: string) => {
+            router.get(window.location.pathname, { 
+                search: searchValue,
+                page: 1 // Reset to first page when searching
+            }, {
+                preserveState: true,
+                preserveScroll: true,
+            });
+        }, 500),
+        []
+    );
+
     const onGlobalFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
-        let _filters = { ...filters };
-
-        // @ts-ignore
-        _filters['global'].value = value;
-
-        setFilters(_filters);
         setGlobalFilterValue(value);
+        
+        // Use debounced search for better performance
+        debouncedSearch(value);
     };
 
     const textEditor = (options: ColumnEditorOptions) => {
@@ -339,10 +423,13 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     };
 
     const formatDate = (value: Date) => {
-        return value.toLocaleDateString('nl-NL', {
+        return value.toLocaleString('nl-NL', {
             day: '2-digit',
             month: '2-digit',
-            year: 'numeric'
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
         });
     };
 
@@ -372,12 +459,12 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 label=""
                 icon="pi pi-external-link"
                 className="p-button-sm p-button-outlined"
-                onClick={() => window.open(`http://localhost/webeditor/webeditor.php?document=/Valke.net/templates/${rowData.category.name}/${rowData.subcategory.name}/${rowData.file_name}`, '_blank')}
+                onClick={() => window.open(`http://localhost/webeditor/webeditor.php?document=${webeditorUrl}/${rowData.category.name}/${rowData.subcategory.name}/${rowData.file_name}`, '_blank')}
             />            <Button
                 label=""
                 icon="pi pi-download"
                 className="p-button-sm p-button-outlined"
-                onClick={() => window.open(`/storage/documents/${rowData.file_name}`, '_blank')}
+                onClick={() => window.open(`/storage/${template ? 'templates' : 'documents'}/${rowData.file_name}`, '_blank')}
             />
             </div>
         );
@@ -387,12 +474,12 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
 
     const handleDelete = (id: number) => {
 
-        router.delete(`/documents/${id}`, {
+        router.delete(`/${template ? 'templates' : 'documents'}/${id}`, {
             onSuccess: () => {
-                console.log(`Document with ID ${id} deleted successfully.`);
+                console.log(`${template ? 'Template' : 'Document'} with ID ${id} deleted successfully.`);
             },
             onError: (errors) => {
-                console.error(`Error deleting document with ID ${id}:`, errors);
+                console.error(`Error deleting ${template ? 'template' : 'document'} with ID ${id}:`, errors);
             }
         });
     };
@@ -400,7 +487,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     const header = renderHeader();
  
   return (
-    <AuthenticatedLayout header="Document Management">
+    <AuthenticatedLayout header={template ? "Template Management" : "Document Management"}>
         <ConfirmDialog /> {/* Ensure ConfirmDialog is rendered */}
 
         {showCreateModal && (
@@ -408,6 +495,8 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             categories={categories}
             subcategories={subcategories || []} // Ensure it's always an array
             statuses={statuses} // Pass statuses to CreateDocumentModal
+            templates={templates || []} // Pass templates for selection
+            template={template} // Pass template parameter
             onClose={() => setShowCreateModal(false)}
           />
         )}
@@ -423,15 +512,20 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           editMode="row" 
           resizableColumns
           paginator
-          rows={1000}
+          lazy
+          first={(documents.current_page - 1) * documents.per_page}
+          rows={documents.per_page}
+          totalRecords={documents.total}
+          onPage={onPageChange}
           dataKey="id"
           filters={filters}
          // filterDisplay="row"
-          globalFilterFields={['order_number', 'file_name', 'note']}
+          globalFilterFields={template ? ['file_name', 'note'] : ['order_number', 'file_name', 'note']}
           emptyMessage="No documents found."
           onFilter={(e) => setFilters(e.filters)}
           onRowEditComplete={onRowEditComplete} 
-          scrollable scrollHeight="400px" 
+          scrollable 
+          scrollHeight="600px"
           header={header}
           removableSort
           reorderableColumns
@@ -445,11 +539,13 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
               style={{ minWidth: '8rem' }}
           />
           
-          <Column field="order_number" header="Order Number" filter sortable filterPlaceholder="Filter ordernr" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
-          <Column field="file_name" header="File Name" filter sortable filterPlaceholder="Filter file name" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
+          {!template && (
+            <Column field="order_number" header="Order Number" filter sortable filterPlaceholder="Filter ordernr" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
+          )}
+          <Column field="file_name" header="File Name" filter sortable filterPlaceholder="Filter file name" style={{ minWidth: '12rem' }}></Column>
           <Column field="note" header="Note" filter sortable filterPlaceholder="Filter note" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
-          <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="Filter category" style={{ minWidth: '12rem' }} showFilterMenu={false} editor={(options) => categoryEditor(options)}></Column>
-          <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="Filter subcategory" style={{ minWidth: '12rem' }} showFilterMenu={false} editor={(options) => subCategoryEditor(options)} ></Column>
+          <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="Filter category" style={{ minWidth: '12rem' }} showFilterMenu={false}></Column>
+          <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="Filter subcategory" style={{ minWidth: '12rem' }} showFilterMenu={false}></Column>
           <Column field="status" body={statusBodyTemplate} header="Status" sortable filter filterElement={statusFilterTemplate} filterPlaceholder="Filter status" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '12rem' }}></Column>
         {/*  <Column field="created_by" header="Created By" sortable filter filterPlaceholder="Search by created by" style={{ minWidth: '12rem' }}></Column>
           <Column field="created_at" header="Created At" filter sortable filterPlaceholder="Search by created at" style={{ minWidth: '12rem' }}></Column>
@@ -512,6 +608,8 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
 
         </DataTable>
       </div>
+
+      <Toast ref={toast} position="top-right" />
     </AuthenticatedLayout>
   );
 };

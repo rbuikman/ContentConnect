@@ -18,10 +18,17 @@ interface Status {
   name: string;
 }
 
+interface Template {
+  id: number;
+  file_name: string;
+}
+
 interface CreateDocumentModalProps {
   categories: Category[];
   subcategories: Subcategory[];
   statuses: Status[]; // Add statuses to props
+  templates: Template[]; // Add templates for selection
+  template?: boolean; // Add template parameter
   onClose: () => void;
 }
 
@@ -32,12 +39,15 @@ interface FormDataShape {
   category_id: number | null;
   sub_category_id: number | null;
   status_id: number | null;
+  template_id: number | null; // Add template_id field
 }
 
 export default function CreateDocumentModal({
   categories,
   subcategories,
   statuses, // Destructure statuses
+  templates, // Destructure templates
+  template = false, // Default to false for documents
   onClose,
 }: CreateDocumentModalProps) {
   const { errors } = usePage().props as any;
@@ -49,6 +59,7 @@ export default function CreateDocumentModal({
     category_id: null,
     sub_category_id: null,
     status_id: statuses[0]?.id || null,
+    template_id: null, // Initialize template_id
   });
 
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
@@ -70,16 +81,25 @@ export default function CreateDocumentModal({
     const { name, value } = e.target;
     setForm(prev => ({
       ...prev,
-      [name]: name === "category_id" || name === "sub_category_id" ? Number(value) : value,
+      [name]: name === "category_id" || name === "sub_category_id" || name === "status_id" || name === "template_id" ? Number(value) : value,
     }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Form submitted:", form); // Debug log
-    router.post("/documents", form as any, {
+    
+    // Add template field to form data if creating a template
+    const formData = {
+      ...form,
+      ...(template && { template: true })
+    };
+    
+    const route = template ? "/templates" : "/documents";
+    
+    router.post(route, formData as any, {
       onSuccess: () => {
-        console.log("Form submitted successfully");
+        console.log(`${template ? 'Template' : 'Document'} created successfully`);
         onClose();
       },
     });
@@ -96,7 +116,9 @@ export default function CreateDocumentModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Create Document</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {template ? 'Create Template' : 'Create Document'}
+          </h3>
           <button
             type="button"
             onClick={onClose}
@@ -144,11 +166,12 @@ export default function CreateDocumentModal({
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Category</label>
+            <label className="block text-sm font-medium text-gray-700">Category *</label>
             <select
               name="category_id"
               value={form.category_id ?? ""}
               onChange={handleChange}
+              required
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm"
             >
               <option value="">Select category</option>
@@ -159,15 +182,14 @@ export default function CreateDocumentModal({
               ))}
             </select>
             {errors?.category_id && <p className="text-red-600 text-sm">{errors.category_id}</p>}
-          </div>
-
-          {/* Subcategory */}
+          </div>          {/* Subcategory */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Subcategory</label>
+            <label className="block text-sm font-medium text-gray-700">Subcategory *</label>
             <select
               name="sub_category_id"
               value={form.sub_category_id ?? ""}
               onChange={handleChange}
+              required
               disabled={!form.category_id || filteredSubcategories.length === 0}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm"
             >
@@ -199,6 +221,27 @@ export default function CreateDocumentModal({
             {errors?.status_id && <p className="text-red-600 text-sm">{errors.status_id}</p>}
           </div>
 
+          {/* Template Selection - Only for documents, not templates */}
+          {!template && templates && templates.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Based on Template (Optional)</label>
+              <select
+                name="template_id"
+                value={form.template_id ?? ""}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm"
+              >
+                <option value="">No template</option>
+                {templates.map((tmpl: Template) => (
+                  <option key={tmpl.id} value={tmpl.id}>
+                    {tmpl.file_name}
+                  </option>
+                ))}
+              </select>
+              {errors?.template_id && <p className="text-red-600 text-sm">{errors.template_id}</p>}
+            </div>
+          )}
+
           {/* Buttons */}
           <div className="flex justify-between mt-4">
             <button
@@ -212,7 +255,7 @@ export default function CreateDocumentModal({
               type="submit"
               className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
             >
-              Create Document
+              {template ? 'Create Template' : 'Create Document'}
             </button>
           </div>
         </form>
