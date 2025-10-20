@@ -43,6 +43,9 @@ interface Language {
 interface Template {
   id: number;
   file_name: string;
+  category_id: number;
+  sub_category_id: number;
+  languages?: Language[];
 }
 
 interface Document {
@@ -99,7 +102,7 @@ const defaultFilters: DataTableFilterMeta = {
     category: { value: null, matchMode: FilterMatchMode.EQUALS },
     subcategory: { value: null, matchMode: FilterMatchMode.EQUALS },
     status: { value: null, matchMode: FilterMatchMode.EQUALS },
-    languages: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    languages: { value: null, matchMode: 'languageContains' as any },
     modified_at: { value: null, matchMode: FilterMatchMode.DATE_IS }
 };
 
@@ -119,8 +122,12 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         setCurrentPage(documents.current_page);
         
         // Register custom filter for languages
-        FilterService.register('languagesFilter', (value: Language[], filter: Language) => {
-            return languagesFilterFunction(value, filter);
+        FilterService.register('languageContains', (value: Language[], filter: Language) => {
+            if (!filter) return true;
+            if (!value || value.length === 0) return false;
+            
+            // Check if any document language matches the selected filter language
+            return value.some(lang => lang.id === filter.id);
         });
         
         // Get search value from URL parameters if it exists
@@ -166,9 +173,12 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
 
     // Custom filter function for languages
     const languagesFilterFunction = (value: Language[], filter: Language) => {
+        console.log('Language filter called with:', { value, filter });
         if (!filter) return true;
         if (!value || value.length === 0) return false;
-        return value.some(lang => lang.id === filter.id);
+        const result = value.some(lang => lang.id === filter.id);
+        console.log('Filter result:', result);
+        return result;
     };
 
     const clearFilter = () => {
@@ -428,17 +438,17 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 value={options.value} // Bind the selected value
                 options={languages} 
                 onChange={(e: DropdownChangeEvent) => {
+                    const selectedValue = e.value || null;
+                    
                     if (options.filterCallback) {
-                        const selectedValue = e.value ? e.value : null;
                         options.filterCallback(selectedValue, options.index ?? 0);
-                        // Update the filters state to ensure DataTable reflects the changes
-                        setFilters((prevFilters) => ({
-                            ...prevFilters,
-                            languages: { value: selectedValue, matchMode: FilterMatchMode.CUSTOM },
-                        }));
-                    } else {
-                        console.error('filterCallback is not defined');
                     }
+                    
+                    // Update the filters state
+                    setFilters((prevFilters) => ({
+                        ...prevFilters,
+                        languages: { value: selectedValue, matchMode: 'languageContains' as any },
+                    }));
                 }}
                 optionLabel="name" // Display the name property in the dropdown
                 placeholder="" 
@@ -642,7 +652,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
           <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
           <Column field="status" body={statusBodyTemplate} header="Status" sortable filter filterElement={statusFilterTemplate} filterPlaceholder="" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '8rem' }}></Column>
-          <Column field="languages" body={languagesBodyTemplate} header="Languages" filter filterElement={languagesFilterTemplate} filterFunction={languagesFilterFunction} editor={(options) => languagesEditor(options)} showFilterMenu={false} style={{ minWidth: '10rem' }}></Column>
+          <Column field="languages" body={languagesBodyTemplate} header="Languages" filter filterElement={languagesFilterTemplate} editor={(options) => languagesEditor(options)} showFilterMenu={false} style={{ minWidth: '10rem' }}></Column>
         {/*  <Column field="created_by" header="Created By" sortable filter filterPlaceholder="Search by created by" style={{ minWidth: '12rem' }}></Column>
           <Column field="created_at" header="Created At" filter sortable filterPlaceholder="Search by created at" style={{ minWidth: '12rem' }}></Column>
           <Column field="modified_by" header="Modified By" filter sortable filterPlaceholder="Search by modified by" style={{ minWidth: '12rem' }}></Column>*/}
