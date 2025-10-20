@@ -29,15 +29,28 @@ export default function EditRoleModal({ role, permissions = [], onClose }: EditR
 
   const [form, setForm] = useState<FormDataShape>({
     name: role.name,
-    permissions: role.permissions.map(p => p.id) || [],
+    permissions: role.permissions.map(p => p.id),
   });
 
+  // Update form if role changes
   useEffect(() => {
     setForm({
       name: role.name,
-      permissions: role.permissions.map(p => p.id) || [],
+      permissions: role.permissions.map(p => p.id),
     });
   }, [role]);
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));

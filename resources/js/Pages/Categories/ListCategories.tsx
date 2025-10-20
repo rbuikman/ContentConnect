@@ -47,23 +47,31 @@ export default function ListCategories({ categories, filters = {} }: ListCategor
       <div className="mx-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 my-6">
-
-        {/* Search */}
-        <form onSubmit={handleSearch} className="mb-4 flex space-x-2">
-          <input
-            type="text"
-            placeholder="Search categories..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="flex-1 rounded border-gray-300 shadow-sm px-3 py-2"
-          />
-        </form>
           <button
             onClick={() => setShowCreateModal(true)}
             className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
           >
             Create Category
           </button>
+          <form onSubmit={handleSearch} className="w-full sm:flex-1 max-w-md">
+            <div className="relative">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              <button
+                type="submit"
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-indigo-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+            </div>
+          </form>
         </div>
 
         {/* Table */}

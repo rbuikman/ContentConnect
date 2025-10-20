@@ -1,8 +1,8 @@
-// resources/js/Pages/Categories/CreateCategoryModal.tsx
+// resources/js/Pages/Statuses/CreateStatusModal.tsx
 import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
 
-interface CreateCategoryProps {
+interface CreateStatusProps {
   onClose: () => void;
 }
 
@@ -10,7 +10,7 @@ interface FormDataShape {
   name: string;
 }
 
-export default function CreateCategoryModal({ onClose }: CreateCategoryProps) {
+export default function CreateStatusModal({ onClose }: CreateStatusProps) {
   const { errors } = usePage().props as any;
 
   const [form, setForm] = useState<FormDataShape>({
@@ -35,7 +35,7 @@ export default function CreateCategoryModal({ onClose }: CreateCategoryProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    router.post("/categories", { ...form }, {
+    router.post("/statuses", { ...form }, {
       onSuccess: () => onClose(),
     });
   };
@@ -45,7 +45,7 @@ export default function CreateCategoryModal({ onClose }: CreateCategoryProps) {
       <div className="bg-white rounded-lg shadow-lg w-96 p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Create Category</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Create Status</h2>
           <button
             type="button"
             onClick={onClose}
@@ -74,15 +74,15 @@ export default function CreateCategoryModal({ onClose }: CreateCategoryProps) {
             <button
               type="button"
               onClick={onClose}
-              className="bg-gray-500 text-white rounded-md px-4 py-2 mr-2"
+              className="bg-gray-500 text-white rounded-md px-4 py-2 mr-2 hover:bg-gray-600 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-indigo-600 text-white rounded-md px-4 py-2"
+              className="bg-indigo-600 text-white rounded-md px-4 py-2 hover:bg-indigo-700 transition"
             >
-              Save
+              Create
             </button>
           </div>
         </form>

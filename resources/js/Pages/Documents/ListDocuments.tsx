@@ -262,7 +262,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                     }
                 }}
                 optionLabel="name" // Display the name property in the dropdown
-                placeholder="Filter Status" 
+                placeholder="" 
                 className="p-column-filter" 
                 showClear 
             />
@@ -303,7 +303,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                     }
                 }}
                 optionLabel="name" // Display the name property in the dropdown
-                placeholder="Filter Category" 
+                placeholder="" 
                 className="p-column-filter" 
                 showClear 
             />
@@ -344,8 +344,8 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                     }
                 }}
                 optionLabel="name" // Display the name property in the dropdown
-                placeholder="Filter Sub Category" 
-                className="p-column-filter" 
+                placeholder="" 
+                className="p-column-filter"
                 showClear 
             />
         );
@@ -355,7 +355,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
 
         return (
 
-            <div className="flex justify-content-end" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+            <div className="flex justify-between items-center">
               {template ? (
                 <button
                   onClick={() => {
@@ -380,9 +380,9 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                   Create&nbsp;Document
                 </button>
               )}
-                <IconField iconPosition="left">
-                    <InputIcon className="pi pi-search" />
-                    <InputText type="search" value={globalFilterValue || ''} onChange={(e) => onGlobalFilterChange(e)} placeholder="Search" />
+                <IconField iconPosition="right" className="w-64">
+                    <InputIcon className="pi pi-search"  />
+                    <InputText type="search" value={globalFilterValue || ''} onChange={(e) => onGlobalFilterChange(e)} placeholder="Search" className="text-sm" />
                 </IconField>
             </div>
         );
@@ -508,12 +508,13 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           loading={loading}
           stripedRows
           size="small"
+          className="compact-table"
           tableStyle={{ minWidth: '50rem' }}
+          rowClassName={() => 'compact-row'}
           value={documents.data}
           editMode="row" 
           resizableColumns
           paginator
-          lazy
           first={(documents.current_page - 1) * documents.per_page}
           rows={documents.per_page}
           totalRecords={documents.total}
@@ -526,7 +527,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           onFilter={(e) => setFilters(e.filters)}
           onRowEditComplete={onRowEditComplete} 
           scrollable 
-          scrollHeight="600px"
+          scrollHeight="calc(100vh - 355px)"
           header={header}
           removableSort
           reorderableColumns
@@ -534,31 +535,26 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           currentPageReportTemplate="Showing {first} to {last} of {totalRecords} documents" 
         >
         {/*}  <Column field="id" header="ID" sortable filter filterPlaceholder="Search by ID" style={{ minWidth: '12rem' }}></Column> */}
-           <Column 
-              body={openUrlTemplate} 
-              header="Actions" 
-              style={{ minWidth: '8rem' }}
-          />
           
           {!template && (
-            <Column field="order_number" header="Order Number" filter sortable filterPlaceholder="Filter ordernr" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
+            <Column field="order_number" header="Order Number" filter sortable filterPlaceholder="" style={{ minWidth: '8rem' }} editor={(options) => textEditor(options)}></Column>
           )}
-          <Column field="file_name" header="File Name" filter sortable filterPlaceholder="Filter file name" style={{ minWidth: '12rem' }}></Column>
-          <Column field="note" header="Note" filter sortable filterPlaceholder="Filter note" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
-          <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="Filter category" style={{ minWidth: '12rem' }} showFilterMenu={false}></Column>
-          <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="Filter subcategory" style={{ minWidth: '12rem' }} showFilterMenu={false}></Column>
-          <Column field="status" body={statusBodyTemplate} header="Status" sortable filter filterElement={statusFilterTemplate} filterPlaceholder="Filter status" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '12rem' }}></Column>
+          <Column field="file_name" header="File Name" filter sortable filterPlaceholder="" style={{ minWidth: '12rem' }}></Column>
+          <Column field="note" header="Note" filter sortable filterPlaceholder="" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
+          <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
+          <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
+          <Column field="status" body={statusBodyTemplate} header="Status" sortable filter filterElement={statusFilterTemplate} filterPlaceholder="" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '8rem' }}></Column>
         {/*  <Column field="created_by" header="Created By" sortable filter filterPlaceholder="Search by created by" style={{ minWidth: '12rem' }}></Column>
           <Column field="created_at" header="Created At" filter sortable filterPlaceholder="Search by created at" style={{ minWidth: '12rem' }}></Column>
           <Column field="modified_by" header="Modified By" filter sortable filterPlaceholder="Search by modified by" style={{ minWidth: '12rem' }}></Column>*/}
           <Column field="modified_at" body={dateBodyTemplate} header="Modified At" sortable filterPlaceholder="Search by modified at" style={{ minWidth: '12rem' }}  showFilterMenu={false} ></Column>
-          <Column rowEditor={true} headerStyle={{ width: '10%', minWidth: '8rem' }} bodyStyle={{ textAlign: 'center' }} body={(rowData: any, options: ColumnBodyOptions) => (
+          <Column alignFrozen="right" frozen={true} rowEditor={true} header="Actions" headerStyle={{ width: '15%', minWidth: '12rem' }} bodyStyle={{ textAlign: 'center' }} body={(rowData: any, options: ColumnBodyOptions) => (
     <>
       {options.rowEditor?.editing ? (
-        <div>
+        <div className="flex gap-1 justify-center">
           <Button
             icon="pi pi-save"
-            className="p-button-rounded mr-2 p-button-outlined"
+            className="p-button-rounded p-button-outlined"
             onClick={(e) =>
               options.rowEditor?.onSaveClick &&
               options.rowEditor?.onSaveClick(e)
@@ -577,10 +573,24 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           />
         </div>
       ) : (
-        <div>
+        <div className="flex gap-1 justify-center">
+          <Button
+            icon="pi pi-external-link"
+            className="p-button-rounded p-button-outlined"
+            onClick={() => window.open(`${webeditorUrl}?document=${webeditorDocumentPath}/${rowData.category.name}/${rowData.subcategory.name}/${rowData.file_name}`, '_blank')}
+            tooltipOptions={{ position: "top" }}
+            severity="info"
+          />
+          <Button
+            icon="pi pi-download"
+            className="p-button-rounded p-button-outlined"
+            onClick={() => window.open(`/storage/${template ? 'templates' : 'documents'}/${rowData.file_name}`, '_blank')}
+            tooltipOptions={{ position: "top" }}
+            severity="help"
+          />
           <Button
             icon="pi pi-pencil"
-            className="p-button-rounded mr-2 p-button-outlined"
+            className="p-button-rounded p-button-outlined"
             onClick={(e) =>
               options.rowEditor?.onInitClick &&
               options.rowEditor?.onInitClick(e)

@@ -30,6 +30,18 @@ export default function EditCategoryModal({ category, onClose }: EditCategoryPro
     });
   }, [category]);
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     router.put(`/categories/${category.id}`, { ...form }, {
@@ -40,7 +52,18 @@ export default function EditCategoryModal({ category, onClose }: EditCategoryPro
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-lg w-96 p-6">
-        <h2 className="text-lg font-semibold mb-4">Edit Category</h2>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Edit Category</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-800"
+            aria-label="Close modal"
+          >
+            ✕
+          </button>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700">

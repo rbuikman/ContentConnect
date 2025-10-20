@@ -1,5 +1,5 @@
 // resources/js/Pages/Users/CreateUserModal.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
 
 interface Role {
@@ -22,6 +22,18 @@ interface FormDataShape {
 
 export default function CreateUserModal({ roles = [], onClose }: CreateUserProps) {
   const { errors } = usePage().props as any;
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   const [form, setForm] = useState<FormDataShape>({
     name: "",

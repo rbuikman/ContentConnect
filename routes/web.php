@@ -131,6 +131,20 @@ Route::middleware('auth')->group(function () {
 
             Route::delete("/{id}", [\App\Http\Controllers\SubCategoriesController::class, 'destroy']);
     });
+
+    Route::prefix('statuses')->group(function () {
+        Route::get('/', [\App\Http\Controllers\StatusController::class, 'index'])->name('statuses.index');
+
+            Route::get('/create', [\App\Http\Controllers\StatusController::class, 'create']);
+
+            Route::get('/{id}', [\App\Http\Controllers\StatusController::class, 'edit']);
+
+            Route::post("/", [\App\Http\Controllers\StatusController::class, 'store']);
+
+            Route::put("/{id}", [\App\Http\Controllers\StatusController::class, 'update']);
+
+            Route::delete("/{id}", [\App\Http\Controllers\StatusController::class, 'destroy']);
+    });
 });
 
 require __DIR__.'/auth.php';

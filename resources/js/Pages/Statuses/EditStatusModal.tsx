@@ -1,8 +1,14 @@
-// resources/js/Pages/Categories/CreateCategoryModal.tsx
+// resources/js/Pages/Statuses/EditStatusModal.tsx
 import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
 
-interface CreateCategoryProps {
+interface Status {
+  id: number;
+  name: string;
+}
+
+interface EditStatusProps {
+  status: Status;
   onClose: () => void;
 }
 
@@ -10,12 +16,19 @@ interface FormDataShape {
   name: string;
 }
 
-export default function CreateCategoryModal({ onClose }: CreateCategoryProps) {
+export default function EditStatusModal({ status, onClose }: EditStatusProps) {
   const { errors } = usePage().props as any;
 
   const [form, setForm] = useState<FormDataShape>({
-    name: "",
+    name: status.name,
   });
+
+  // Update form if status changes
+  useEffect(() => {
+    setForm({
+      name: status.name,
+    });
+  }, [status]);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -29,13 +42,9 @@ export default function CreateCategoryModal({ onClose }: CreateCategoryProps) {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    router.post("/categories", { ...form }, {
+    router.put(`/statuses/${status.id}`, { ...form }, {
       onSuccess: () => onClose(),
     });
   };
@@ -45,7 +54,7 @@ export default function CreateCategoryModal({ onClose }: CreateCategoryProps) {
       <div className="bg-white rounded-lg shadow-lg w-96 p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Create Category</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Edit Status</h2>
           <button
             type="button"
             onClick={onClose}
@@ -63,9 +72,8 @@ export default function CreateCategoryModal({ onClose }: CreateCategoryProps) {
             <input
               type="text"
               id="name"
-              name="name"
               value={form.name}
-              onChange={handleChange}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
             {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
@@ -74,13 +82,13 @@ export default function CreateCategoryModal({ onClose }: CreateCategoryProps) {
             <button
               type="button"
               onClick={onClose}
-              className="bg-gray-500 text-white rounded-md px-4 py-2 mr-2"
+              className="bg-gray-500 text-white rounded-md px-4 py-2 mr-2 hover:bg-gray-600 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-indigo-600 text-white rounded-md px-4 py-2"
+              className="bg-indigo-600 text-white rounded-md px-4 py-2 hover:bg-indigo-700 transition"
             >
               Save
             </button>

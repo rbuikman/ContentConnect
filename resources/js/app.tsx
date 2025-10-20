@@ -24,7 +24,7 @@ createInertiaApp({
         const root = createRoot(el);
 
         root.render(
-            <PrimeReactProvider value={{ unstyled: false, ripple: true, pt: { input: { root: Tailwind.input } } }}>
+            <PrimeReactProvider value={{ unstyled: false, ripple: true }}>
                 <App {...props} />
             </PrimeReactProvider>);
     },

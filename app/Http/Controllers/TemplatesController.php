@@ -182,8 +182,8 @@ class TemplatesController extends Controller
         });
 
         // Process root files with default category/subcategory
-        foreach ($rootFiles as $file) {
-            $fileName = basename($file);
+        foreach ($rootFiles as $rootFile) {
+            $fileName = pathinfo(basename($rootFile), PATHINFO_FILENAME);
             
             // Track this file as existing in storage
             $existingFiles[] = [
@@ -253,8 +253,9 @@ class TemplatesController extends Controller
             });
 
             // Process files in category folder with default subcategory
-            foreach ($categoryFiles as $file) {
-                $fileName = basename($file);
+            foreach ($categoryFiles as $categoryFile) {
+                $fileName = pathinfo(basename($categoryFile), PATHINFO_FILENAME);
+
                 
                 // Use default subcategory for this category
                 $categoryDefaultSubcategory = SubCategory::firstOrCreate([
@@ -332,8 +333,8 @@ class TemplatesController extends Controller
                     return in_array($extension, ['indd', 'indt']);
                 });
 
-                foreach ($files as $file) {
-                    $fileName = basename($file);
+                foreach ($files as $subcategoryFile) {
+                    $fileName = pathinfo(basename($subcategoryFile), PATHINFO_FILENAME);
                     
                     // Track this file as existing in storage
                     $existingFiles[] = [

@@ -29,7 +29,7 @@ export default function Authenticated({
     return (
         <div className="min-h-screen bg-gray-100">
             <nav className="border-b border-gray-100 bg-white">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto w-[95%] px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex">
                             <div className="flex shrink-0 items-center">
@@ -80,6 +80,9 @@ export default function Authenticated({
                                         </Dropdown.Link>
                                         <Dropdown.Link href={route('users.index')}>
                                             Users
+                                        </Dropdown.Link>
+                                        <Dropdown.Link href={route('statuses.index')}>
+                                            Statuses
                                         </Dropdown.Link>
                                         <Dropdown.Link href={route('categories.index')}>
                                             Categories
@@ -196,13 +199,21 @@ export default function Authenticated({
 
             {header && (
                 <header className="bg-white shadow">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {header}
+                    <div className="mx-auto w-[95%] px-4 py-2 sm:px-6 lg:px-8">
+                        {<h2 className="text-xl font-semibold leading-tight text-gray-800">{header}</h2>}
                     </div>
                 </header>
             )}
 
-            <main>{children}</main>
+            <main className="py-8">
+                <div className="mx-auto w-[95%] px-4 sm:px-6 lg:px-8">
+                    <div className="main-content-card">
+                        <div className="p-8">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            </main>
         </div>
     );
 }

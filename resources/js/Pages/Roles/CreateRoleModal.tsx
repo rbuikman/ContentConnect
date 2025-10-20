@@ -1,5 +1,5 @@
 // resources/js/Pages/Roles/CreateRoleModal.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
 
 interface Permission {
@@ -24,6 +24,18 @@ export default function CreateRoleModal({ permissions = [], onClose }: CreateRol
     name: "",
     permissions: [],
   });
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
