@@ -5,6 +5,7 @@ use App\Models\Document;
 use App\Models\Category;
 use App\Models\SubCategory;
 use App\Models\Status;
+use App\Models\Language;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log; // Import the Log facade
@@ -23,7 +24,7 @@ class TemplatesController extends Controller
 
         $query = $request->input('search');
 
-        $documents = Document::with(['category', 'subcategory', 'status']) // Added 'status' relationship
+        $documents = Document::with(['category', 'subcategory', 'status', 'languages']) // Added 'languages' relationship
             ->where('template', true) // Filter for templates only
             ->where('deleted', false) // Filter out deleted records
             ->when($query, function($q) use ($query) {
@@ -41,7 +42,8 @@ class TemplatesController extends Controller
             'categories' => Category::all(),
             'subcategories' => SubCategory::all(),
             'statuses' => Status::all(),
-            'templates' => Document::where('template', true)->where('deleted', false)->get(['id', 'file_name']), // Add templates for selection
+            'languages' => Language::all(),
+            'templates' => Document::where('template', true)->where('deleted', false)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']), // Add templates for selection with relationships
             'template' => true, // Pass template parameter for templates
             'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
             'webeditorDocumentPath' => config('app.webeditor_template_path'), // Add template path from config
@@ -59,6 +61,8 @@ class TemplatesController extends Controller
             'category_id' => 'required|integer',
             'sub_category_id' => 'required|integer',
             'status_id' => 'required|integer',
+            'language_ids' => 'nullable|array',
+            'language_ids.*' => 'integer|exists:languages,id',
         ]);
  
         $document = Document::create([
@@ -71,6 +75,11 @@ class TemplatesController extends Controller
         ]);
 
         Log::info('Template after creation:', $document->fresh()->toArray());
+
+        // Associate languages with the template
+        if ($request->language_ids) {
+            $document->languages()->sync($request->language_ids);
+        }
 
         return redirect()->route('templates.index')->with('success', 'Template created successfully');
     }
@@ -95,6 +104,8 @@ class TemplatesController extends Controller
             'category_id' => 'nullable|integer',
             'sub_category_id' => 'nullable|integer',
             'status_id' => 'required|integer',
+            'language_ids' => 'nullable|array',
+            'language_ids.*' => 'integer|exists:languages,id',
         ]);
 
         $document->update([
@@ -108,6 +119,11 @@ class TemplatesController extends Controller
             'modified_by' => auth()->user()->name,
             'modified_at' => now(),
         ]);
+
+        // Update language associations
+        if ($request->has('language_ids')) {
+            $document->languages()->sync($request->language_ids ?? []);
+        }
 
         Log::info('Template after update:', $document->toArray());
 

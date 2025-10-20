@@ -5,6 +5,7 @@ use App\Models\Document;
 use App\Models\Category;
 use App\Models\SubCategory;
 use App\Models\Status;
+use App\Models\Language;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log; // Import the Log facade
@@ -16,7 +17,7 @@ class DocumentsController extends Controller
     {
         $query = $request->input('search');
 
-        $documents = Document::with(['category', 'subcategory', 'status', 'baseTemplate']) // Added 'baseTemplate' relationship
+        $documents = Document::with(['category', 'subcategory', 'status', 'baseTemplate', 'languages']) // Added 'languages' relationship
             ->where('template', false) // Filter for documents only (not templates)
             ->where('deleted', false) // Filter out deleted records
             ->when($query, function($q) use ($query) {
@@ -34,7 +35,8 @@ class DocumentsController extends Controller
             'categories' => Category::all(),
             'subcategories' => SubCategory::all(),
             'statuses' => Status::all(),
-            'templates' => Document::where('template', true)->where('deleted', false)->get(['id', 'file_name']), // Add templates for selection
+            'languages' => Language::all(),
+            'templates' => Document::where('template', true)->where('deleted', false)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']), // Add templates for selection with relationships
             'template' => false, // Pass template parameter for documents
             'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
             'webeditorDocumentPath' => config('app.webeditor_document_path'), // Add document path from config
@@ -45,15 +47,20 @@ class DocumentsController extends Controller
     {    
         Log::info('Create request data:', $request->all()); // Log the request data
       
+        // For documents (not templates), template_id is required
+        $isTemplate = $request->boolean('template', false);
+        
         $request->validate([
             'order_number' => 'required|string',
             'file_name' => 'required|string',
             'note' => 'nullable|string',
-            'category_id' => 'required|integer',
-            'sub_category_id' => 'required|integer',
+            'category_id' => 'nullable|integer',
+            'sub_category_id' => 'nullable|integer',
             'status_id' => 'required|integer',
             'template' => 'nullable|boolean',
-            'template_id' => 'nullable|integer|exists:documents,id',
+            'template_id' => $isTemplate ? 'nullable|integer|exists:documents,id' : 'required|integer|exists:documents,id',
+            'language_ids' => 'nullable|array',
+            'language_ids.*' => 'integer|exists:languages,id',
         ]);
  
                 $document = Document::create([
@@ -72,6 +79,11 @@ class DocumentsController extends Controller
         ]);
 
         Log::info('Document after creation:', $document->fresh()->toArray());
+
+        // Associate languages with the document
+        if ($request->language_ids) {
+            $document->languages()->sync($request->language_ids);
+        }
 
         // Copy template file if template_id is provided
         if ($request->template_id) {
@@ -212,6 +224,8 @@ class DocumentsController extends Controller
             'status_id' => 'required|integer',
             'template' => 'nullable|boolean',
             'template_id' => 'nullable|integer|exists:documents,id',
+            'language_ids' => 'nullable|array',
+            'language_ids.*' => 'integer|exists:languages,id',
         ]);
 
         $document->update([
@@ -226,6 +240,11 @@ class DocumentsController extends Controller
             'modified_by' => auth()->user()->name,
             'modified_at' => now(),
         ]);
+
+        // Update language associations
+        if ($request->has('language_ids')) {
+            $document->languages()->sync($request->language_ids ?? []);
+        }
 
         Log::info('Document after update:', $document->toArray());
 

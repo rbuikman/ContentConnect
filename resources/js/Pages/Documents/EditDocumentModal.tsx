@@ -18,6 +18,12 @@ interface Status {
   name: string;
 }
 
+interface Language {
+  id: number;
+  name: string;
+  code: string;
+}
+
 interface Document {
   id: number;
   order_number: string;
@@ -26,6 +32,7 @@ interface Document {
   category_id: number | null;
   sub_category_id: number | null;
   status_id: number | null;
+  languages?: Language[];
 }
 
 interface EditDocumentModalProps {
@@ -33,6 +40,7 @@ interface EditDocumentModalProps {
   categories: Category[];
   subcategories: Subcategory[];
   statuses: Status[]; // Add statuses to props
+  languages: Language[]; // Add languages to props
   onClose: () => void;
 }
 
@@ -50,6 +58,7 @@ export default function EditDocumentModal({
   categories,
   subcategories,
   statuses, // Destructure statuses
+  languages, // Destructure languages
   onClose,
 }: EditDocumentModalProps) {
   const { errors } = usePage().props as any;
@@ -58,7 +67,24 @@ export default function EditDocumentModal({
     ...document,
     status_id: document.status_id || null, // Use status_id directly
   });
+  const [selectedLanguageIds, setSelectedLanguageIds] = useState<number[]>(
+    document.languages?.map(lang => lang.id) || []
+  );
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
+
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscapeKey);
+    return () => {
+      window.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [onClose]);
 
   useEffect(() => {
     if (form.category_id && subcategories?.length) {
@@ -99,9 +125,21 @@ export default function EditDocumentModal({
     });
   };
 
+  const handleLanguageChange = (languageId: number) => {
+    setSelectedLanguageIds(prev => 
+      prev.includes(languageId)
+        ? prev.filter(id => id !== languageId)
+        : [...prev, languageId]
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    router.put(`/documents/${document.id}`, form as any, { onSuccess: () => onClose() });
+    const formData = {
+      ...form,
+      language_ids: selectedLanguageIds
+    };
+    router.put(`/documents/${document.id}`, formData as any, { onSuccess: () => onClose() });
   };
 
   return (
@@ -213,6 +251,27 @@ export default function EditDocumentModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Languages */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Languages</label>
+            <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+              {languages.map((language: Language) => (
+                <label key={language.id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedLanguageIds.includes(language.id)}
+                    onChange={() => handleLanguageChange(language.id)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">
+                    {language.name} ({language.code})
+                  </span>
+                </label>
+              ))}
+            </div>
+            {errors?.language_ids && <p className="text-red-600 text-sm">{errors.language_ids}</p>}
           </div>
 
           {/* Buttons */}

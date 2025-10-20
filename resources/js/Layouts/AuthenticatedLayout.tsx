@@ -87,6 +87,9 @@ export default function Authenticated({
                                         <Dropdown.Link href={route('categories.index')}>
                                             Categories
                                         </Dropdown.Link>
+                                        <Dropdown.Link href={route('languages.index')}>
+                                            Languages
+                                        </Dropdown.Link>
                                         <hr className="my-1 border-gray-200" />
                                         <Dropdown.Link href={route('profile.edit')}>
                                             Profile
@@ -162,13 +165,13 @@ export default function Authenticated({
                             active={route().current('dashboard')}
                         >
                             Dashboard
-                        </ResponsiveNavLink>*/}
+                        </ResponsiveNavLink>
                         <ResponsiveNavLink href={route('roles.index')}>
                             Roles
                         </ResponsiveNavLink>
                         <ResponsiveNavLink href={route('users.index')}>
                             Users
-                        </ResponsiveNavLink>
+                        </ResponsiveNavLink>*/}
                     </div>
 
                     <div className="border-t border-gray-200 pb-1 pt-4">

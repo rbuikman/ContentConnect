@@ -22,6 +22,12 @@ interface Status {
   name: string;
 }
 
+interface Language {
+  id: number;
+  name: string;
+  code: string;
+}
+
 export interface DocumentData {
   id: number;
   order_number: string;
@@ -48,6 +54,7 @@ interface ListDocumentsProps {
   categories: Category[];
   subcategories: Subcategory[];
   statuses: Status[]; // Add statuses to props
+  languages: Language[]; // Add languages to props
 }
 
 export default function ListDocuments({
@@ -55,6 +62,7 @@ export default function ListDocuments({
   categories,
   subcategories,
   statuses, // Destructure statuses
+  languages, // Destructure languages
 }: ListDocumentsProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingDocument, setEditingDocument] = useState<DocumentData | null>(null);
@@ -201,6 +209,8 @@ export default function ListDocuments({
             categories={categories}
             subcategories={subcategories || []} // Ensure it's always an array
             statuses={statuses} // Pass statuses to CreateDocumentModal
+            languages={languages} // Pass languages to CreateDocumentModal
+            templates={[]} // Pass empty templates array
             onClose={() => setShowCreateModal(false)}
           />
         )}
@@ -210,6 +220,7 @@ export default function ListDocuments({
             categories={categories}
             subcategories={subcategories}
             statuses={statuses} // Pass statuses to EditDocumentModal
+            languages={languages} // Pass languages to EditDocumentModal
             onClose={() => setEditingDocument(null)}
           />
         )}

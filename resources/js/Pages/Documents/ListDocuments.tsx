@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { FilterMatchMode } from 'primereact/api';
+import { FilterMatchMode, FilterService } from 'primereact/api';
 import { DataTable, DataTableFilterMeta, DataTableRowEditCompleteEvent } from "primereact/datatable";
 import { Button } from "primereact/button";
 import { Column, ColumnEditorOptions, ColumnFilterElementTemplateOptions, ColumnBodyOptions } from 'primereact/column';
@@ -34,6 +34,12 @@ interface Status {
   name: string;
 }
 
+interface Language {
+  id: number;
+  name: string;
+  code: string;
+}
+
 interface Template {
   id: number;
   file_name: string;
@@ -47,6 +53,7 @@ interface Document {
   category: Category;
   subcategory: Subcategory;
   status: Status;
+  languages?: Language[]; // Add languages relationship
   base_template?: Template; // Add baseTemplate relationship
   template_id?: number; // Add template_id field
   created_by: string;
@@ -72,6 +79,7 @@ interface ListDocumentsProps {
   categories: Category[];
   subcategories: Subcategory[];
   statuses: Status[]; // Add statuses to props
+  languages: Language[]; // Add languages to props
   templates: Template[]; // Add templates for document creation
   template?: boolean; // Add template parameter to determine context
   webeditorUrl: string; // Add webeditor base URL from environment
@@ -91,11 +99,12 @@ const defaultFilters: DataTableFilterMeta = {
     category: { value: null, matchMode: FilterMatchMode.EQUALS },
     subcategory: { value: null, matchMode: FilterMatchMode.EQUALS },
     status: { value: null, matchMode: FilterMatchMode.EQUALS },
+    languages: { value: null, matchMode: FilterMatchMode.CUSTOM },
     modified_at: { value: null, matchMode: FilterMatchMode.DATE_IS }
 };
 
 
-const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, categories, subcategories, templates, template = false, webeditorUrl, webeditorDocumentPath }) => {
+const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, categories, subcategories, languages, templates, template = false, webeditorUrl, webeditorDocumentPath }) => {
     const { flash, errors } = usePage().props as any;
     const [loading, setLoading] = useState<boolean>(true);
     const [globalFilterValue, setGlobalFilterValue] = useState<string>('');
@@ -108,6 +117,11 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         setLoading(false);
         initFilters();
         setCurrentPage(documents.current_page);
+        
+        // Register custom filter for languages
+        FilterService.register('languagesFilter', (value: Language[], filter: Language) => {
+            return languagesFilterFunction(value, filter);
+        });
         
         // Get search value from URL parameters if it exists
         const urlParams = new URLSearchParams(window.location.search);
@@ -148,6 +162,13 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     const initFilters = () => {
         setFilters(defaultFilters);
         setGlobalFilterValue('');
+    };
+
+    // Custom filter function for languages
+    const languagesFilterFunction = (value: Language[], filter: Language) => {
+        if (!filter) return true;
+        if (!value || value.length === 0) return false;
+        return value.some(lang => lang.id === filter.id);
     };
 
     const clearFilter = () => {
@@ -192,6 +213,11 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         newData.category_id = newData.category?.id; // Ensure category_id is set correctly
         newData.sub_category_id = newData.subcategory?.id; // Ensure subcategory_id is set correctly
         
+        // Handle language associations
+        if (newData.languages) {
+            newData.language_ids = newData.languages.map((lang: Language) => lang.id);
+        }
+        
         // Ensure order_number exists for templates (set to empty string if not present)
         if (template && !newData.order_number) {
             newData.order_number = '';
@@ -223,6 +249,37 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                     return <Tag value={option.name} severity={getSeverity(option)}></Tag>;
                 }}
             />
+        );
+    };
+
+    const languagesEditor = (options: ColumnEditorOptions) => {
+        const currentLanguages = options.value || [];
+        const selectedLanguageIds = currentLanguages.map((lang: Language) => lang.id);
+
+        return (
+            <div className="space-y-1 max-h-32 overflow-y-auto border rounded p-2">
+                {languages.map((language: Language) => (
+                    <label key={language.id} className="flex items-center space-x-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={selectedLanguageIds.includes(language.id)}
+                            onChange={(e) => {
+                                let updatedLanguages;
+                                if (e.target.checked) {
+                                    // Add language if checked
+                                    updatedLanguages = [...currentLanguages, language];
+                                } else {
+                                    // Remove language if unchecked
+                                    updatedLanguages = currentLanguages.filter((lang: Language) => lang.id !== language.id);
+                                }
+                                options.editorCallback!(updatedLanguages);
+                            }}
+                            className="rounded border-gray-300"
+                        />
+                        <span>{language.name} ({language.code})</span>
+                    </label>
+                ))}
+            </div>
         );
     };
 
@@ -268,6 +325,20 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             />
         );
     };
+
+    const languagesBodyTemplate = (rowData: Document) => {
+      if (rowData.languages && rowData.languages.length > 0) {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {rowData.languages.map((language: Language) => (
+              <Tag key={language.id} value={language.code} className="text-xs" />
+            ))}
+          </div>
+        );
+      } else {
+        return <span className="text-gray-400 text-xs">-</span>;
+      }
+    }
 
     const categoryBodyTemplate = (rowData: Document) => {
       if (rowData.category) {
@@ -338,6 +409,32 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                             ...prevFilters,
                             subcategory: { value: selectedValue, matchMode: FilterMatchMode.EQUALS }, // Use status for filtering
                             sub_category_id: { value: subCategoryId, matchMode: FilterMatchMode.EQUALS }, // Use status_id for filtering
+                        }));
+                    } else {
+                        console.error('filterCallback is not defined');
+                    }
+                }}
+                optionLabel="name" // Display the name property in the dropdown
+                placeholder="" 
+                className="p-column-filter"
+                showClear 
+            />
+        );
+    };
+
+    const languagesFilterTemplate = (options: ColumnFilterElementTemplateOptions) => {
+        return (
+            <Dropdown 
+                value={options.value} // Bind the selected value
+                options={languages} 
+                onChange={(e: DropdownChangeEvent) => {
+                    if (options.filterCallback) {
+                        const selectedValue = e.value ? e.value : null;
+                        options.filterCallback(selectedValue, options.index ?? 0);
+                        // Update the filters state to ensure DataTable reflects the changes
+                        setFilters((prevFilters) => ({
+                            ...prevFilters,
+                            languages: { value: selectedValue, matchMode: FilterMatchMode.CUSTOM },
                         }));
                     } else {
                         console.error('filterCallback is not defined');
@@ -496,6 +593,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             categories={categories}
             subcategories={subcategories || []} // Ensure it's always an array
             statuses={statuses} // Pass statuses to CreateDocumentModal
+            languages={languages} // Pass languages to CreateDocumentModal
             templates={templates || []} // Pass templates for selection
             template={template} // Pass template parameter
             onClose={() => setShowCreateModal(false)}
@@ -544,6 +642,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
           <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
           <Column field="status" body={statusBodyTemplate} header="Status" sortable filter filterElement={statusFilterTemplate} filterPlaceholder="" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '8rem' }}></Column>
+          <Column field="languages" body={languagesBodyTemplate} header="Languages" filter filterElement={languagesFilterTemplate} filterFunction={languagesFilterFunction} editor={(options) => languagesEditor(options)} showFilterMenu={false} style={{ minWidth: '10rem' }}></Column>
         {/*  <Column field="created_by" header="Created By" sortable filter filterPlaceholder="Search by created by" style={{ minWidth: '12rem' }}></Column>
           <Column field="created_at" header="Created At" filter sortable filterPlaceholder="Search by created at" style={{ minWidth: '12rem' }}></Column>
           <Column field="modified_by" header="Modified By" filter sortable filterPlaceholder="Search by modified by" style={{ minWidth: '12rem' }}></Column>*/}

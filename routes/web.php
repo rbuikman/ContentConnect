@@ -145,6 +145,20 @@ Route::middleware('auth')->group(function () {
 
             Route::delete("/{id}", [\App\Http\Controllers\StatusController::class, 'destroy']);
     });
+
+    Route::prefix('languages')->group(function () {
+        Route::get('/', [\App\Http\Controllers\LanguageController::class, 'index'])->name('languages.index');
+
+            Route::get('/create', [\App\Http\Controllers\LanguageController::class, 'create']);
+
+            Route::get('/{id}', [\App\Http\Controllers\LanguageController::class, 'edit']);
+
+            Route::post("/", [\App\Http\Controllers\LanguageController::class, 'store']);
+
+            Route::put("/{id}", [\App\Http\Controllers\LanguageController::class, 'update']);
+
+            Route::delete("/{id}", [\App\Http\Controllers\LanguageController::class, 'destroy']);
+    });
 });
 
 require __DIR__.'/auth.php';

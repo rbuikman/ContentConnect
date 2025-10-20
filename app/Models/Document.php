@@ -48,6 +48,11 @@ class Document extends Model
         return $this->belongsTo(Status::class, 'status_id');
     }
 
+    public function languages()
+    {
+        return $this->belongsToMany(Language::class, 'document_language');
+    }
+
     // Template relationship - a document can be based on a template
     public function baseTemplate()
     {
