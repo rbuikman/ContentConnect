@@ -314,6 +314,12 @@ class DocumentsController extends Controller
         
         // Get documents storage path from environment
         $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
+        if ($document->template) {
+            $documentsPath = env('CONTENTCONNECT_STORAGE_TEMPLATES');
+        } else {
+            // If it's a document, use documents storage path
+            $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
+        }
         
         if (!$documentsPath) {
             Log::error('Documents storage path not configured in environment');
