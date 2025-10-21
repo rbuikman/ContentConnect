@@ -6,6 +6,7 @@ interface Language {
   id: number;
   name: string;
   code: string;
+  active: boolean;
 }
 
 interface EditLanguageProps {
@@ -16,6 +17,7 @@ interface EditLanguageProps {
 interface FormDataShape {
   name: string;
   code: string;
+  active: boolean;
 }
 
 export default function EditLanguageModal({ language, onClose }: EditLanguageProps) {
@@ -24,6 +26,7 @@ export default function EditLanguageModal({ language, onClose }: EditLanguagePro
   const [form, setForm] = useState<FormDataShape>({
     name: language.name,
     code: language.code,
+    active: language.active,
   });
 
   // Update form if language changes
@@ -31,6 +34,7 @@ export default function EditLanguageModal({ language, onClose }: EditLanguagePro
     setForm({
       name: language.name,
       code: language.code,
+      active: language.active,
     });
   }, [language]);
 
@@ -98,6 +102,22 @@ export default function EditLanguageModal({ language, onClose }: EditLanguagePro
               maxLength={10}
             />
             {errors.code && <div className="text-red-500 text-sm mt-1">{errors.code}</div>}
+          </div>
+
+          <div className="mb-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="active"
+                checked={form.active}
+                onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="active" className="ml-2 block text-sm text-gray-900">
+                Active
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Inactive languages will not be available for selection in documents</p>
           </div>
           
           <div className="flex justify-end">

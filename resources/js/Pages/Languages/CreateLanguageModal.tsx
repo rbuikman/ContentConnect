@@ -9,6 +9,7 @@ interface CreateLanguageProps {
 interface FormDataShape {
   name: string;
   code: string;
+  active: boolean;
 }
 
 export default function CreateLanguageModal({ onClose }: CreateLanguageProps) {
@@ -17,6 +18,7 @@ export default function CreateLanguageModal({ onClose }: CreateLanguageProps) {
   const [form, setForm] = useState<FormDataShape>({
     name: "",
     code: "",
+    active: true,
   });
 
   // Handle Escape key to close modal
@@ -33,6 +35,10 @@ export default function CreateLanguageModal({ onClose }: CreateLanguageProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.checked }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -89,6 +95,23 @@ export default function CreateLanguageModal({ onClose }: CreateLanguageProps) {
               maxLength={10}
             />
             {errors.code && <div className="text-red-500 text-sm mt-1">{errors.code}</div>}
+          </div>
+
+          <div className="mb-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="active"
+                name="active"
+                checked={form.active}
+                onChange={handleCheckboxChange}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="active" className="ml-2 block text-sm text-gray-900">
+                Active
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Inactive languages will not be available for selection in documents</p>
           </div>
           
           <div className="flex justify-end">

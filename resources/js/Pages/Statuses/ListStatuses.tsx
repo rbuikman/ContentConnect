@@ -8,6 +8,7 @@ import EditStatusModal from "./EditStatusModal";
 interface Status {
   id: number;
   name: string;
+  active: boolean;
 }
 
 interface StatusesData {
@@ -40,6 +41,13 @@ export default function ListStatuses({ statuses, filters = {} }: ListStatusesPro
     if (confirm("Are you sure you want to delete this status?")) {
       router.delete(`/statuses/${id}`);
     }
+  };
+
+  const toggleActive = (id: number, currentActive: boolean) => {
+    router.put(`/statuses/${id}`, { active: !currentActive }, {
+      preserveState: true,
+      preserveScroll: true,
+    });
   };
 
   return (
@@ -81,6 +89,7 @@ export default function ListStatuses({ statuses, filters = {} }: ListStatusesPro
               <tr>
                 <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
+                <th className="px-6 py-3 font-semibold text-center">Active</th>
                 <th className="px-6 py-3 font-semibold text-center">Actions</th>
               </tr>
             </thead>
@@ -90,6 +99,15 @@ export default function ListStatuses({ statuses, filters = {} }: ListStatusesPro
                   <tr key={status.id} className="border-b hover:bg-gray-50 transition">
                     <td className="px-6 py-4">{status.id}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{status.name}</td>
+                    <td className="px-6 py-4 text-center">
+                      <button
+                        onClick={() => toggleActive(status.id, status.active)}
+                        className={`text-lg ${status.active ? 'text-green-500 hover:text-green-700' : 'text-red-500 hover:text-red-700'} transition`}
+                        title={status.active ? 'Click to deactivate' : 'Click to activate'}
+                      >
+                        {status.active ? '✓' : '✗'}
+                      </button>
+                    </td>
                     <td className="px-6 py-4 text-center">
                         <div className="flex justify-center gap-2">
                             <button

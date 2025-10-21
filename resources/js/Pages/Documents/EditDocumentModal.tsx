@@ -1,6 +1,7 @@
 // resources/js/Pages/Documents/EditDocumentModal.tsx
 import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
+import { MultiSelect } from "primereact/multiselect";
 
 interface Category {
   id: number;
@@ -24,6 +25,13 @@ interface Language {
   code: string;
 }
 
+interface Content {
+  id: number;
+  name: string;
+  excel_file_path: string | null;
+  is_network_path: boolean;
+}
+
 interface Document {
   id: number;
   order_number: string;
@@ -33,6 +41,7 @@ interface Document {
   sub_category_id: number | null;
   status_id: number | null;
   languages?: Language[];
+  contents?: Content[];
 }
 
 interface EditDocumentModalProps {
@@ -41,6 +50,7 @@ interface EditDocumentModalProps {
   subcategories: Subcategory[];
   statuses: Status[]; // Add statuses to props
   languages: Language[]; // Add languages to props
+  contents: Content[]; // Add contents to props
   onClose: () => void;
 }
 
@@ -59,6 +69,7 @@ export default function EditDocumentModal({
   subcategories,
   statuses, // Destructure statuses
   languages, // Destructure languages
+  contents, // Destructure contents
   onClose,
 }: EditDocumentModalProps) {
   const { errors } = usePage().props as any;
@@ -69,6 +80,9 @@ export default function EditDocumentModal({
   });
   const [selectedLanguageIds, setSelectedLanguageIds] = useState<number[]>(
     document.languages?.map(lang => lang.id) || []
+  );
+  const [selectedContentIds, setSelectedContentIds] = useState<number[]>(
+    document.contents?.map(content => content.id) || []
   );
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
 
@@ -133,11 +147,16 @@ export default function EditDocumentModal({
     );
   };
 
+  const handleContentChange = (selectedContents: Content[]) => {
+    setSelectedContentIds(selectedContents.map(content => content.id));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = {
       ...form,
-      language_ids: selectedLanguageIds
+      language_ids: selectedLanguageIds,
+      content_ids: selectedContentIds
     };
     router.put(`/documents/${document.id}`, formData as any, { onSuccess: () => onClose() });
   };
@@ -272,6 +291,39 @@ export default function EditDocumentModal({
               ))}
             </div>
             {errors?.language_ids && <p className="text-red-600 text-sm">{errors.language_ids}</p>}
+          </div>
+
+          {/* Contents */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Associated Contents (Optional)
+            </label>
+            <MultiSelect
+              value={contents?.filter(content => selectedContentIds.includes(content.id)) || []}
+              onChange={(e) => handleContentChange(e.value)}
+              options={contents || []}
+              optionLabel="name"
+              filter
+              placeholder="Select contents to associate with this document"
+              maxSelectedLabels={3}
+              className="w-full"
+              itemTemplate={(option) => (
+                <div className="flex items-center gap-2">
+                  <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-sm`}></i>
+                  <span>{option?.name || 'Unknown'}</span>
+                  <span className="text-xs text-gray-500">
+                    ({option?.is_network_path ? 'Network' : 'Local'})
+                  </span>
+                </div>
+              )}
+              selectedItemTemplate={(option) => (
+                <div className="flex items-center gap-1">
+                  <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-xs`}></i>
+                  <span>{option?.name || 'Unknown'}</span>
+                </div>
+              )}
+            />
+            {errors?.content_ids && <p className="text-red-600 text-sm">{errors.content_ids}</p>}
           </div>
 
           {/* Buttons */}

@@ -28,9 +28,11 @@ class StatusController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|min:3|unique:statuses,name'
+            'name' => 'required|min:3|unique:statuses,name',
+            'active' => 'boolean'
         ]);
 
+        $validated['active'] = $request->boolean('active', true); // Default to true
         $status = Status::create($validated);
 
         return redirect()->route('statuses.index')->with('success', 'Status added successfully');
@@ -54,10 +56,12 @@ class StatusController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|min:3|unique:statuses,name,' . $id,
+            'active' => 'boolean'
         ]);
 
         $status = Status::findOrFail($id);
         $status->name = $validated['name'];
+        $status->active = $request->boolean('active', $status->active); // Keep existing value if not provided
         $status->save();
 
         return redirect()->route('statuses.index')->with('success', 'Status updated successfully');

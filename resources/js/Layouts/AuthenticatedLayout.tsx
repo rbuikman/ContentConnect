@@ -74,6 +74,9 @@ export default function Authenticated({
                                         <Dropdown.Link href={route('templates.index')}>
                                             Templates
                                         </Dropdown.Link>
+                                        <Dropdown.Link href={route('contents.index')}>
+                                            Contents
+                                        </Dropdown.Link>
                                         <hr className="my-1 border-gray-200" />
                                         <Dropdown.Link href={route('roles.index')}>
                                             Roles
@@ -159,6 +162,12 @@ export default function Authenticated({
                     <div className="space-y-1 pb-3 pt-2">
                         <Dropdown.Link href={route('documents.index')}>
                             Documents
+                        </Dropdown.Link>
+                        <Dropdown.Link href={route('templates.index')}>
+                            Templates
+                        </Dropdown.Link>
+                        <Dropdown.Link href={route('contents.index')}>
+                            Contents
                         </Dropdown.Link>
                         {/*<ResponsiveNavLink
                             href={route('dashboard')}

@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\SubCategory;
 use App\Models\Status;
 use App\Models\Language;
+use App\Models\Content;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log; // Import the Log facade
@@ -17,7 +18,7 @@ class DocumentsController extends Controller
     {
         $query = $request->input('search');
 
-        $documents = Document::with(['category', 'subcategory', 'status', 'baseTemplate', 'languages']) // Added 'languages' relationship
+        $documents = Document::with(['category', 'subcategory', 'status', 'baseTemplate', 'languages', 'contents']) // Added 'contents' relationship
             ->where('template', false) // Filter for documents only (not templates)
             ->where('deleted', false) // Filter out deleted records
             ->when($query, function($q) use ($query) {
@@ -34,8 +35,9 @@ class DocumentsController extends Controller
             ],
             'categories' => Category::all(),
             'subcategories' => SubCategory::all(),
-            'statuses' => Status::all(),
-            'languages' => Language::all(),
+            'statuses' => Status::where('active', true)->get(), // Add only active statuses to props
+            'languages' => Language::where('active', true)->get(), // Add only active languages to props
+            'contents' => Content::where('active', true)->get(['id', 'name', 'excel_file_path', 'is_network_path']), // Add only active contents for selection
             'templates' => Document::where('template', true)->where('deleted', false)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']), // Add templates for selection with relationships
             'template' => false, // Pass template parameter for documents
             'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
@@ -61,6 +63,8 @@ class DocumentsController extends Controller
             'template_id' => $isTemplate ? 'nullable|integer|exists:documents,id' : 'required|integer|exists:documents,id',
             'language_ids' => 'nullable|array',
             'language_ids.*' => 'integer|exists:languages,id',
+            'content_ids' => 'nullable|array',
+            'content_ids.*' => 'integer|exists:contents,id',
         ]);
  
                 $document = Document::create([
@@ -83,6 +87,11 @@ class DocumentsController extends Controller
         // Associate languages with the document
         if ($request->language_ids) {
             $document->languages()->sync($request->language_ids);
+        }
+
+        // Associate contents with the document
+        if ($request->content_ids) {
+            $document->contents()->sync($request->content_ids);
         }
 
         // Copy template file if template_id is provided
@@ -141,10 +150,22 @@ class DocumentsController extends Controller
             $destinationFolder = $documentsPath . ($documentFolderPath ? '/' . $documentFolderPath : '');
             $destinationFile = $destinationFolder . '/' . $document->file_name . '.indd';
 
-            // Check if source file exists
+            // Check if source file exists, if not try with .indd extension
             if (!file_exists($sourceFile)) {
-                Log::warning('Template file not found: ' . $sourceFile);
-                return;
+                // Try with .indd extension if the filename doesn't already have it
+                if (!str_ends_with($template->file_name, '.indd')) {
+                    $sourceFileWithExtension = $templatesPath . ($templateFolderPath ? '/' . $templateFolderPath : '') . '/' . $template->file_name . '.indd';
+                    
+                    if (file_exists($sourceFileWithExtension)) {
+                        $sourceFile = $sourceFileWithExtension;
+                    } else {
+                        Log::warning('Template file not found: ' . $sourceFile);
+                        return;
+                    }
+                } else {
+                    Log::warning('Template file not found: ' . $sourceFile);
+                    return;
+                }
             }
 
             // Create destination directory if it doesn't exist
@@ -172,8 +193,19 @@ class DocumentsController extends Controller
      */
     private function copyAdditionalFiles($template, $document, $templatesPath, $documentsPath, $templateFolderPath, $documentFolderPath)
     {
+        // Get the template filename - handle cases where it might not have extension
+        $templateFileName = $template->file_name;
+        
+        // If the template filename doesn't have an extension, check if .indd version exists
+        if (!str_contains($templateFileName, '.')) {
+            $templateFileWithExt = $templatesPath . ($templateFolderPath ? '/' . $templateFolderPath : '') . '/' . $templateFileName . '.indd';
+            if (file_exists($templateFileWithExt)) {
+                $templateFileName = $templateFileName . '.indd';
+            }
+        }
+        
         // Get the template filename without extension
-        $templateBaseName = pathinfo($template->file_name, PATHINFO_FILENAME);
+        $templateBaseName = pathinfo($templateFileName, PATHINFO_FILENAME);
         
         // Define additional file extensions to copy
         $additionalExtensions = ['idml', 'png', 'pdf'];
@@ -226,6 +258,8 @@ class DocumentsController extends Controller
             'template_id' => 'nullable|integer|exists:documents,id',
             'language_ids' => 'nullable|array',
             'language_ids.*' => 'integer|exists:languages,id',
+            'content_ids' => 'nullable|array',
+            'content_ids.*' => 'integer|exists:contents,id',
         ]);
 
         $document->update([
@@ -246,6 +280,11 @@ class DocumentsController extends Controller
             $document->languages()->sync($request->language_ids ?? []);
         }
 
+        // Update content associations
+        if ($request->has('content_ids')) {
+            $document->contents()->sync($request->content_ids ?? []);
+        }
+
         Log::info('Document after update:', $document->toArray());
 
         return redirect()->back()->with('success', 'Document updated successfully');
@@ -264,6 +303,46 @@ class DocumentsController extends Controller
         ]);
 
         return redirect()->route('documents.index')->with('success', 'Document deleted successfully');
+    }
+
+    /**
+     * Serve document thumbnail (PNG file)
+     */
+    public function thumbnail($id)
+    {
+        $document = Document::with(['category', 'subcategory'])->findOrFail($id);
+        
+        // Get documents storage path from environment
+        $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
+        
+        if (!$documentsPath) {
+            Log::error('Documents storage path not configured in environment');
+            abort(404);
+        }
+        
+        // Construct document folder structure based on category and subcategory
+        $documentFolderPath = '';
+        if ($document->category) {
+            $documentFolderPath .= $document->category->name;
+            if ($document->subcategory) {
+                $documentFolderPath .= '/' . $document->subcategory->name;
+            }
+        }
+        
+        // Construct thumbnail file path
+        $thumbnailPath = $documentsPath . ($documentFolderPath ? '/' . $documentFolderPath : '') . '/' . $document->file_name . '.png';
+        
+        // Check if thumbnail exists
+        if (!file_exists($thumbnailPath)) {
+            // Return a default "no thumbnail" image or 404
+            abort(404);
+        }
+        
+        // Serve the image
+        return response()->file($thumbnailPath, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'public, max-age=31536000', // Cache for 1 year
+        ]);
     }
 }
 

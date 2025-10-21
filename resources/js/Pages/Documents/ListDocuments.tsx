@@ -48,6 +48,13 @@ interface Template {
   languages?: Language[];
 }
 
+interface Content {
+  id: number;
+  name: string;
+  excel_file_path: string | null;
+  is_network_path: boolean;
+}
+
 interface Document {
   id: number;
   order_number: string;
@@ -57,6 +64,7 @@ interface Document {
   subcategory: Subcategory;
   status: Status;
   languages?: Language[]; // Add languages relationship
+  contents?: Content[]; // Add contents relationship
   base_template?: Template; // Add baseTemplate relationship
   template_id?: number; // Add template_id field
   created_by: string;
@@ -83,6 +91,7 @@ interface ListDocumentsProps {
   subcategories: Subcategory[];
   statuses: Status[]; // Add statuses to props
   languages: Language[]; // Add languages to props
+  contents: Content[]; // Add contents to props
   templates: Template[]; // Add templates for document creation
   template?: boolean; // Add template parameter to determine context
   webeditorUrl: string; // Add webeditor base URL from environment
@@ -103,17 +112,19 @@ const defaultFilters: DataTableFilterMeta = {
     subcategory: { value: null, matchMode: FilterMatchMode.EQUALS },
     status: { value: null, matchMode: FilterMatchMode.EQUALS },
     languages: { value: null, matchMode: 'languageContains' as any },
+    contents: { value: null, matchMode: 'contentContains' as any },
     modified_at: { value: null, matchMode: FilterMatchMode.DATE_IS }
 };
 
 
-const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, categories, subcategories, languages, templates, template = false, webeditorUrl, webeditorDocumentPath }) => {
+const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, categories, subcategories, languages, contents, templates, template = false, webeditorUrl, webeditorDocumentPath }) => {
     const { flash, errors } = usePage().props as any;
     const [loading, setLoading] = useState<boolean>(true);
     const [globalFilterValue, setGlobalFilterValue] = useState<string>('');
     const [filters, setFilters] = useState<DataTableFilterMeta>(defaultFilters);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [expandedRows, setExpandedRows] = useState<any>(null);
     const toast = useRef<Toast>(null);
 
     useEffect(() => {
@@ -128,6 +139,15 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             
             // Check if any document language matches the selected filter language
             return value.some(lang => lang.id === filter.id);
+        });
+        
+        // Register custom filter for contents
+        FilterService.register('contentContains', (value: Content[], filter: Content) => {
+            if (!filter) return true;
+            if (!value || value.length === 0) return false;
+            
+            // Check if any document content matches the selected filter content
+            return value.some(content => content.id === filter.id);
         });
         
         // Get search value from URL parameters if it exists
@@ -181,6 +201,16 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         return result;
     };
 
+    // Custom filter function for contents
+    const contentsFilterFunction = (value: Content[], filter: Content) => {
+        console.log('Content filter called with:', { value, filter });
+        if (!filter) return true;
+        if (!value || value.length === 0) return false;
+        const result = value.some(content => content.id === filter.id);
+        console.log('Filter result:', result);
+        return result;
+    };
+
     const clearFilter = () => {
         initFilters();
     };
@@ -226,6 +256,11 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         // Handle language associations
         if (newData.languages) {
             newData.language_ids = newData.languages.map((lang: Language) => lang.id);
+        }
+        
+        // Handle content associations
+        if (newData.contents) {
+            newData.content_ids = newData.contents.map((content: Content) => content.id);
         }
         
         // Ensure order_number exists for templates (set to empty string if not present)
@@ -350,6 +385,24 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
       }
     }
 
+    const contentsBodyTemplate = (rowData: Document) => {
+      if (rowData.contents && rowData.contents.length > 0) {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {rowData.contents.map((content: Content) => (
+              <Tag 
+                key={content.id} 
+                value={`${content.is_network_path ? "📁" : "📄"} ${content.name}`} 
+                className="text-xs" 
+              />
+            ))}
+          </div>
+        );
+      } else {
+        return <span className="text-gray-400 text-xs">-</span>;
+      }
+    }
+
     const categoryBodyTemplate = (rowData: Document) => {
       if (rowData.category) {
         return <Tag value={rowData.category.name}/>;
@@ -397,6 +450,32 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
       } else {
         return null;
       }
+    }
+
+    const thumbnailBodyTemplate = (rowData: Document) => {
+      // Construct thumbnail URL using the document ID
+      const thumbnailUrl = `/documents/thumbnail/${rowData.id}`;
+      
+      return (
+        <div className="flex justify-center items-center h-12">
+          <img 
+            src={thumbnailUrl} 
+            alt={`Thumbnail for ${rowData.file_name}`}
+            className="w-10 h-10 object-cover rounded shadow-sm border"
+            onLoad={() => {
+              console.log(`Thumbnail loaded for document ${rowData.id}: ${thumbnailUrl}`);
+            }}
+            onError={(e) => {
+              console.log(`Thumbnail failed to load for document ${rowData.id}: ${thumbnailUrl}`);
+              // Show a simple placeholder
+              e.currentTarget.style.display = 'none';
+              if (e.currentTarget.parentElement) {
+                e.currentTarget.parentElement.innerHTML = '<div class="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">📄</div>';
+              }
+            }}
+          />
+        </div>
+      );
     }
 
 
@@ -455,6 +534,63 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 className="p-column-filter"
                 showClear 
             />
+        );
+    };
+
+    const contentsFilterTemplate = (options: ColumnFilterElementTemplateOptions) => {
+        return (
+            <Dropdown 
+                value={options.value} // Bind the selected value
+                options={contents} 
+                onChange={(e: DropdownChangeEvent) => {
+                    const selectedValue = e.value || null;
+                    
+                    if (options.filterCallback) {
+                        options.filterCallback(selectedValue, options.index ?? 0);
+                    }
+                    
+                    // Update the filters state
+                    setFilters((prevFilters) => ({
+                        ...prevFilters,
+                        contents: { value: selectedValue, matchMode: 'contentContains' as any },
+                    }));
+                }}
+                optionLabel="name" // Display the name property in the dropdown
+                placeholder="" 
+                className="p-column-filter"
+                showClear 
+            />
+        );
+    };
+
+    const contentsEditor = (options: ColumnEditorOptions) => {
+        const currentContents = options.value || [];
+        const selectedContentIds = currentContents.map((content: Content) => content.id);
+
+        return (
+            <div className="space-y-1 max-h-32 overflow-y-auto border rounded p-2">
+                {contents.map((content: Content) => (
+                    <label key={content.id} className="flex items-center space-x-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={selectedContentIds.includes(content.id)}
+                            onChange={(e) => {
+                                let updatedContents;
+                                if (e.target.checked) {
+                                    // Add content if checked
+                                    updatedContents = [...currentContents, content];
+                                } else {
+                                    // Remove content if unchecked
+                                    updatedContents = currentContents.filter((cont: Content) => cont.id !== content.id);
+                                }
+                                options.editorCallback!(updatedContents);
+                            }}
+                            className="rounded border-gray-300"
+                        />
+                        <span>{content.is_network_path ? "📁" : "📄"} {content.name}</span>
+                    </label>
+                ))}
+            </div>
         );
     };
 
@@ -545,6 +681,80 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         return formatDate(new Date(rowData.modified_at!));
     };
 
+    const rowExpansionTemplate = (data: Document) => {
+        return (
+            <div className="p-4 bg-gray-50 border-l-4 border-blue-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Document Details Section */}
+                    <div className="space-y-2">
+                        <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Document Details</h4>
+                        <div className="space-y-1">
+                            <p className="text-sm"><span className="font-medium">Order Number:</span> {data.order_number}</p>
+                            <p className="text-sm"><span className="font-medium">File Name:</span> {data.file_name}</p>
+                            {data.note && <p className="text-sm"><span className="font-medium">Note:</span> {data.note}</p>}
+                            {data.template_id && (
+                                <p className="text-sm">
+                                    <span className="font-medium">Template ID:</span> {data.template_id}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Category & Status Section */}
+                    <div className="space-y-2">
+                        <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Classification</h4>
+                        <div className="space-y-1">
+                            {data.category && <p className="text-sm"><span className="font-medium">Category:</span> {data.category.name}</p>}
+                            {data.subcategory && <p className="text-sm"><span className="font-medium">Subcategory:</span> {data.subcategory.name}</p>}
+                            {data.status && (
+                                <p className="text-sm">
+                                    <span className="font-medium">Status:</span> 
+                                    <Tag value={data.status.name} severity={getSeverity(data.status)} className="ml-2" />
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Languages & Timestamps Section */}
+                    <div className="space-y-2">
+                        <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Additional Info</h4>
+                        <div className="space-y-1">
+                            {data.languages && data.languages.length > 0 && (
+                                <div className="text-sm">
+                                    <span className="font-medium">Languages:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                        {data.languages.map((language: Language) => (
+                                            <Tag key={language.id} value={language.code} className="text-xs" />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            <p className="text-sm"><span className="font-medium">Created:</span> {formatDate(new Date(data.created_at!))}</p>
+                            <p className="text-sm"><span className="font-medium">Created by:</span> {data.created_by}</p>
+                            <p className="text-sm"><span className="font-medium">Modified:</span> {formatDate(new Date(data.modified_at!))}</p>
+                            <p className="text-sm"><span className="font-medium">Modified by:</span> {data.modified_by}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Large Thumbnail Section */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-2">Preview</h4>
+                    <div className="flex justify-center">
+                        <img 
+                            src={`/documents/thumbnail/${data.id}`} 
+                            alt={`Preview of ${data.file_name}`}
+                            className="max-w-xs max-h-48 object-contain rounded shadow-lg"
+                            onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                            }}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const dateFilterTemplate = (options: ColumnFilterElementTemplateOptions) => {
         return (
             <Calendar
@@ -596,6 +806,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
  
   return (
     <AuthenticatedLayout header={template ? "Template Management" : "Document Management"}>
+
         <ConfirmDialog /> {/* Ensure ConfirmDialog is rendered */}
 
         {showCreateModal && (
@@ -604,6 +815,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             subcategories={subcategories || []} // Ensure it's always an array
             statuses={statuses} // Pass statuses to CreateDocumentModal
             languages={languages} // Pass languages to CreateDocumentModal
+            contents={contents || []} // Pass contents to CreateDocumentModal
             templates={templates || []} // Pass templates for selection
             template={template} // Pass template parameter
             onClose={() => setShowCreateModal(false)}
@@ -633,7 +845,10 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           globalFilterFields={template ? ['file_name', 'note'] : ['order_number', 'file_name', 'note']}
           emptyMessage="No documents found."
           onFilter={(e) => setFilters(e.filters)}
-          onRowEditComplete={onRowEditComplete} 
+          onRowEditComplete={onRowEditComplete}
+          expandedRows={expandedRows}
+          onRowToggle={(e) => setExpandedRows(e.data)}
+          rowExpansionTemplate={rowExpansionTemplate} 
           scrollable 
           scrollHeight="calc(100vh - 355px)"
           header={header}
@@ -643,6 +858,9 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           currentPageReportTemplate="Showing {first} to {last} of {totalRecords} documents" 
         >
         {/*}  <Column field="id" header="ID" sortable filter filterPlaceholder="Search by ID" style={{ minWidth: '12rem' }}></Column> */}
+          <Column expander={true} style={{ width: '3rem' }} />
+          <Column field="thumbnail" body={thumbnailBodyTemplate} header="" style={{ width: '5rem', textAlign: 'center' }}></Column>
+
           
           {!template && (
             <Column field="order_number" header="Order Number" filter sortable filterPlaceholder="" style={{ minWidth: '8rem' }} editor={(options) => textEditor(options)}></Column>
@@ -653,6 +871,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
           <Column field="status" body={statusBodyTemplate} header="Status" sortable filter filterElement={statusFilterTemplate} filterPlaceholder="" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '8rem' }}></Column>
           <Column field="languages" body={languagesBodyTemplate} header="Languages" filter filterElement={languagesFilterTemplate} editor={(options) => languagesEditor(options)} showFilterMenu={false} style={{ minWidth: '10rem' }}></Column>
+          <Column field="contents" body={contentsBodyTemplate} header="Contents" filter filterElement={contentsFilterTemplate} editor={(options) => contentsEditor(options)} showFilterMenu={false} style={{ minWidth: '12rem' }}></Column>
         {/*  <Column field="created_by" header="Created By" sortable filter filterPlaceholder="Search by created by" style={{ minWidth: '12rem' }}></Column>
           <Column field="created_at" header="Created At" filter sortable filterPlaceholder="Search by created at" style={{ minWidth: '12rem' }}></Column>
           <Column field="modified_by" header="Modified By" filter sortable filterPlaceholder="Search by modified by" style={{ minWidth: '12rem' }}></Column>*/}

@@ -1,6 +1,7 @@
 // resources/js/Pages/Documents/CreateDocumentModal.tsx
 import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
+import { MultiSelect } from "primereact/multiselect";
 
 interface Category {
   id: number;
@@ -32,11 +33,19 @@ interface Template {
   languages?: Language[];
 }
 
+interface Content {
+  id: number;
+  name: string;
+  excel_file_path: string | null;
+  is_network_path: boolean;
+}
+
 interface CreateDocumentModalProps {
   categories: Category[];
   subcategories: Subcategory[];
   statuses: Status[]; // Add statuses to props
   languages: Language[]; // Add languages to props
+  contents: Content[]; // Add contents to props
   templates: Template[]; // Add templates for selection
   template?: boolean; // Add template parameter
   onClose: () => void;
@@ -51,6 +60,7 @@ interface FormDataShape {
   status_id: number | null;
   template_id: number | null; // Add template_id field
   language_ids: number[]; // Add language_ids field
+  content_ids: number[]; // Add content_ids field
 }
 
 export default function CreateDocumentModal({
@@ -58,6 +68,7 @@ export default function CreateDocumentModal({
   subcategories,
   statuses, // Destructure statuses
   languages, // Destructure languages
+  contents, // Destructure contents
   templates, // Destructure templates
   template = false, // Default to false for documents
   onClose,
@@ -73,6 +84,7 @@ export default function CreateDocumentModal({
     status_id: null, // Don't pre-select status - make it required
     template_id: null, // Initialize template_id
     language_ids: [], // Initialize language_ids
+    content_ids: [], // Initialize content_ids
   });
 
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
@@ -162,6 +174,13 @@ export default function CreateDocumentModal({
       language_ids: prev.language_ids.includes(languageId)
         ? prev.language_ids.filter(id => id !== languageId)
         : [...prev.language_ids, languageId]
+    }));
+  };
+
+  const handleContentChange = (selectedContents: Content[]) => {
+    setForm(prev => ({
+      ...prev,
+      content_ids: selectedContents.map(content => content.id)
     }));
   };
 
@@ -434,6 +453,39 @@ export default function CreateDocumentModal({
               </p>
             )}
             {errors?.language_ids && <p className="text-red-600 text-sm">{errors.language_ids}</p>}
+          </div>
+
+          {/* Contents */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Associated Contents (Optional)
+            </label>
+            <MultiSelect
+              value={contents?.filter(content => form.content_ids.includes(content.id)) || []}
+              onChange={(e) => handleContentChange(e.value)}
+              options={contents || []}
+              optionLabel="name"
+              filter
+              placeholder="Select contents to associate with this document"
+              maxSelectedLabels={3}
+              className="w-full"
+              itemTemplate={(option) => (
+                <div className="flex items-center gap-2">
+                  <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-sm`}></i>
+                  <span>{option?.name || 'Unknown'}</span>
+                  <span className="text-xs text-gray-500">
+                    ({option?.is_network_path ? 'Network' : 'Local'})
+                  </span>
+                </div>
+              )}
+              selectedItemTemplate={(option) => (
+                <div className="flex items-center gap-1">
+                  <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-xs`}></i>
+                  <span>{option?.name || 'Unknown'}</span>
+                </div>
+              )}
+            />
+            {errors?.content_ids && <p className="text-red-600 text-sm">{errors.content_ids}</p>}
           </div>
 
           {/* Create per language option - Only for documents */}

@@ -30,9 +30,11 @@ class LanguageController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|min:2|unique:languages,name',
-            'code' => 'required|min:2|max:10|unique:languages,code'
+            'code' => 'required|min:2|max:10|unique:languages,code',
+            'active' => 'boolean'
         ]);
 
+        $validated['active'] = $request->boolean('active', true); // Default to true
         $language = Language::create($validated);
 
         return redirect()->route('languages.index')->with('success', 'Language added successfully');
@@ -56,12 +58,14 @@ class LanguageController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|min:2|unique:languages,name,' . $id,
-            'code' => 'required|min:2|max:10|unique:languages,code,' . $id
+            'code' => 'required|min:2|max:10|unique:languages,code,' . $id,
+            'active' => 'boolean'
         ]);
 
         $language = Language::findOrFail($id);
         $language->name = $validated['name'];
         $language->code = $validated['code'];
+        $language->active = $request->boolean('active', $language->active); // Keep existing value if not provided
         $language->save();
 
         return redirect()->route('languages.index')->with('success', 'Language updated successfully');

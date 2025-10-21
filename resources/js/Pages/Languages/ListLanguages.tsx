@@ -9,6 +9,7 @@ interface Language {
   id: number;
   name: string;
   code: string;
+  active: boolean;
 }
 
 interface LanguagesData {
@@ -41,6 +42,13 @@ export default function ListLanguages({ languages, filters = {} }: ListLanguages
     if (confirm("Are you sure you want to delete this language?")) {
       router.delete(`/languages/${id}`);
     }
+  };
+
+  const toggleActive = (id: number, currentActive: boolean) => {
+    router.put(`/languages/${id}`, { active: !currentActive }, {
+      preserveState: true,
+      preserveScroll: true,
+    });
   };
 
   return (
@@ -83,6 +91,7 @@ export default function ListLanguages({ languages, filters = {} }: ListLanguages
                 <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
                 <th className="px-6 py-3 font-semibold">Code</th>
+                <th className="px-6 py-3 font-semibold text-center">Active</th>
                 <th className="px-6 py-3 font-semibold text-center">Actions</th>
               </tr>
             </thead>
@@ -96,6 +105,15 @@ export default function ListLanguages({ languages, filters = {} }: ListLanguages
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {language.code}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button
+                        onClick={() => toggleActive(language.id, language.active)}
+                        className={`text-lg ${language.active ? 'text-green-500 hover:text-green-700' : 'text-red-500 hover:text-red-700'} transition`}
+                        title={language.active ? 'Click to deactivate' : 'Click to activate'}
+                      >
+                        {language.active ? '✓' : '✗'}
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-center">
                         <div className="flex justify-center gap-2">

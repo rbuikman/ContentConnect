@@ -53,6 +53,11 @@ class Document extends Model
         return $this->belongsToMany(Language::class, 'document_language');
     }
 
+    public function contents()
+    {
+        return $this->belongsToMany(Content::class, 'document_content');
+    }
+
     // Template relationship - a document can be based on a template
     public function baseTemplate()
     {

@@ -5,6 +5,7 @@ import { router, usePage } from "@inertiajs/react";
 interface Status {
   id: number;
   name: string;
+  active: boolean;
 }
 
 interface EditStatusProps {
@@ -14,6 +15,7 @@ interface EditStatusProps {
 
 interface FormDataShape {
   name: string;
+  active: boolean;
 }
 
 export default function EditStatusModal({ status, onClose }: EditStatusProps) {
@@ -21,12 +23,14 @@ export default function EditStatusModal({ status, onClose }: EditStatusProps) {
 
   const [form, setForm] = useState<FormDataShape>({
     name: status.name,
+    active: status.active,
   });
 
   // Update form if status changes
   useEffect(() => {
     setForm({
       name: status.name,
+      active: status.active,
     });
   }, [status]);
 
@@ -77,6 +81,22 @@ export default function EditStatusModal({ status, onClose }: EditStatusProps) {
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
             {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
+          </div>
+
+          <div className="mb-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="active"
+                checked={form.active}
+                onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="active" className="ml-2 block text-sm text-gray-900">
+                Active
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Inactive statuses will not be available for selection in documents</p>
           </div>
           <div className="flex justify-end">
             <button

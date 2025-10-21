@@ -9,7 +9,11 @@ class Language extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'code'];
+    protected $fillable = ['name', 'code', 'active'];
+
+    protected $casts = [
+        'active' => 'boolean',
+    ];
 
     public function documents()
     {

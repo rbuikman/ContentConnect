@@ -10,7 +10,11 @@ class Status extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'active'];
+
+    protected $casts = [
+        'active' => 'boolean',
+    ];
 
     public function documents()
     {

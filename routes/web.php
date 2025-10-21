@@ -78,6 +78,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [\App\Http\Controllers\DocumentsController::class, 'index'])->name('documents.index');
 
             Route::get('/create', [\App\Http\Controllers\DocumentsController::class, 'create']);
+            
+            Route::get('/thumbnail/{id}', [\App\Http\Controllers\DocumentsController::class, 'thumbnail'])->name('documents.thumbnail');
 
             Route::get('/{id}', [\App\Http\Controllers\DocumentsController::class, 'edit']);
 
@@ -86,6 +88,14 @@ Route::middleware('auth')->group(function () {
             Route::put("/{id}", [\App\Http\Controllers\DocumentsController::class, 'update']);
 
             Route::delete("/{id}", [\App\Http\Controllers\DocumentsController::class, 'destroy']);
+    });
+
+    Route::prefix('contents')->group(function () {
+            Route::get('/', [\App\Http\Controllers\ContentsController::class, 'index'])->name('contents.index');
+            Route::post('/', [\App\Http\Controllers\ContentsController::class, 'store'])->name('contents.store');
+            Route::put('/{content}', [\App\Http\Controllers\ContentsController::class, 'update'])->name('contents.update');
+            Route::delete('/{content}', [\App\Http\Controllers\ContentsController::class, 'destroy'])->name('contents.destroy');
+            Route::get('/download/{content}', [\App\Http\Controllers\ContentsController::class, 'download'])->name('contents.download');
     });
 
     Route::prefix('templates')->group(function () {
