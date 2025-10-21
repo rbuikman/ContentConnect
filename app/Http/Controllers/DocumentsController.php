@@ -26,7 +26,7 @@ class DocumentsController extends Controller
                 ->orWhere('file_name', 'like', "%{$query}%");
             })
             ->orderBy('modified_at', 'desc') // Sort by modified_at descending
-            ->paginate(1000)
+          //  ->paginate(1000)
             ->withQueryString(); // houdt de search parameter bij in paginatie
 
         return Inertia::render('Documents/ListDocuments', [

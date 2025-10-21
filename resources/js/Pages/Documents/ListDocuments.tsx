@@ -14,9 +14,13 @@ import { InputIcon } from 'primereact/inputicon';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog'; // Import ConfirmDialog
 import { Tag } from 'primereact/tag';
 import { Dropdown, DropdownChangeEvent } from 'primereact/dropdown';
+import { MultiSelect } from 'primereact/multiselect';
+import { Menu } from 'primereact/menu';
+import { OverlayPanel } from 'primereact/overlaypanel';
 import { router, usePage } from "@inertiajs/react";
 import { Calendar } from 'primereact/calendar';
 import CreateDocumentModal from "./CreateDocumentModal";
+import EditDocumentModal from "./EditDocumentModal";
 
 interface Category {
   id: number;
@@ -103,6 +107,11 @@ interface FlashMessages {
   error?: string;
 }
 
+interface ColumnConfig {
+  field: string;
+  header: string;
+}
+
 const defaultFilters: DataTableFilterMeta = {
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
     order_number: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -123,9 +132,56 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     const [globalFilterValue, setGlobalFilterValue] = useState<string>('');
     const [filters, setFilters] = useState<DataTableFilterMeta>(defaultFilters);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [expandedRows, setExpandedRows] = useState<any>(null);
     const toast = useRef<Toast>(null);
+    const columnToggleRef = useRef<OverlayPanel>(null);
+
+    // Column visibility state
+    const allColumns: ColumnConfig[] = [
+        { field: 'thumbnail', header: 'Thumbnail' },
+        { field: 'order_number', header: 'Order Number' },
+        { field: 'file_name', header: 'File Name' },
+        { field: 'note', header: 'Note' },
+        { field: 'category', header: 'Category' },
+        { field: 'subcategory', header: 'Subcategory' },
+        { field: 'status', header: 'Status' },
+        { field: 'languages', header: 'Languages' },
+        { field: 'contents', header: 'Contents' },
+        { field: 'modified_at', header: 'Modified At' }
+    ];
+
+    // Initialize visible columns from localStorage (default), sessionStorage (current session), or use fallback default
+    const getInitialVisibleColumns = (): ColumnConfig[] => {
+        try {
+            // First check localStorage for user's default preference
+            const defaultState = localStorage.getItem('contentconnect-dt-default-columns');
+            if (defaultState) {
+                const parsedDefault = JSON.parse(defaultState);
+                if (parsedDefault.visibleColumns) {
+                    return parsedDefault.visibleColumns;
+                }
+            }
+            
+            // Then check sessionStorage for current session state
+            const stateKey = 'contentconnect-dt-state';
+            const storedState = sessionStorage.getItem(stateKey);
+            if (storedState) {
+                const parsedState = JSON.parse(storedState);
+                if (parsedState.visibleColumns) {
+                    return parsedState.visibleColumns;
+                }
+            }
+        } catch (error) {
+            console.warn('Error loading visible columns from storage:', error);
+        }
+        // Fallback: show all columns except note
+        return allColumns.filter(col => col.field !== 'note');
+    };
+
+    const [visibleColumns, setVisibleColumns] = useState<ColumnConfig[]>(getInitialVisibleColumns());
 
     useEffect(() => {
         setLoading(false);
@@ -185,6 +241,47 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             });
         }
     }, [flash, errors]);
+
+    // Save visible columns to sessionStorage whenever they change
+    useEffect(() => {
+        try {
+            const stateKey = 'contentconnect-dt-state';
+            const existingState = sessionStorage.getItem(stateKey);
+            let stateToSave = { visibleColumns };
+            
+            if (existingState) {
+                const parsedState = JSON.parse(existingState);
+                stateToSave = { ...parsedState, visibleColumns };
+            }
+            
+            sessionStorage.setItem(stateKey, JSON.stringify(stateToSave));
+        } catch (error) {
+            console.warn('Error saving visible columns to storage:', error);
+        }
+    }, [visibleColumns]);
+
+    // Save current column visibility as default to localStorage
+    const saveAsDefault = () => {
+        try {
+            const defaultState = { visibleColumns };
+            localStorage.setItem('contentconnect-dt-default-columns', JSON.stringify(defaultState));
+            
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Column visibility saved as default',
+                life: 3000
+            });
+        } catch (error) {
+            console.warn('Error saving default column visibility:', error);
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Failed to save default column visibility',
+                life: 3000
+            });
+        }
+    };
 
     const initFilters = () => {
         setFilters(defaultFilters);
@@ -623,10 +720,19 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                   Create&nbsp;Document
                 </button>
               )}
+              <div className="flex items-center gap-2">
                 <IconField iconPosition="right" className="w-64">
                     <InputIcon className="pi pi-search"  />
                     <InputText type="search" value={globalFilterValue || ''} onChange={(e) => onGlobalFilterChange(e)} placeholder="Search" className="text-sm" />
                 </IconField>
+                <Button
+                  icon="pi pi-bars"
+                  className="p-button-rounded p-button-outlined p-button-sm"
+                  onClick={(e) => columnToggleRef.current?.toggle(e)}
+                  tooltip="Column Visibility"
+                  tooltipOptions={{ position: 'left' }}
+                />
+              </div>
             </div>
         );
     };
@@ -692,9 +798,9 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                             <p className="text-sm"><span className="font-medium">Order Number:</span> {data.order_number}</p>
                             <p className="text-sm"><span className="font-medium">File Name:</span> {data.file_name}</p>
                             {data.note && <p className="text-sm"><span className="font-medium">Note:</span> {data.note}</p>}
-                            {data.template_id && (
+                            {data.base_template && (
                                 <p className="text-sm">
-                                    <span className="font-medium">Template ID:</span> {data.template_id}
+                                    <span className="font-medium">Used template:</span> {data.base_template.file_name}
                                 </p>
                             )}
                         </div>
@@ -790,6 +896,11 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
 
 
 
+    const handleEdit = (document: Document) => {
+        setSelectedDocument(document);
+        setShowEditModal(true);
+    };
+
     const handleDelete = (id: number) => {
 
         router.delete(`/${template ? 'templates' : 'documents'}/${id}`, {
@@ -822,6 +933,31 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           />
         )}
 
+        {showEditModal && selectedDocument && (
+          <EditDocumentModal
+            document={{
+              id: selectedDocument.id,
+              order_number: selectedDocument.order_number,
+              file_name: selectedDocument.file_name,
+              note: selectedDocument.note,
+              category_id: selectedDocument.category?.id || null,
+              sub_category_id: selectedDocument.subcategory?.id || null,
+              status_id: selectedDocument.status?.id || null,
+              languages: selectedDocument.languages,
+              contents: selectedDocument.contents
+            }}
+            categories={categories}
+            subcategories={subcategories || []} // Ensure it's always an array
+            statuses={statuses} // Pass statuses to EditDocumentModal
+            languages={languages} // Pass languages to EditDocumentModal
+            contents={contents || []} // Pass contents to EditDocumentModal
+            onClose={() => {
+              setShowEditModal(false);
+              setSelectedDocument(null);
+            }}
+          />
+        )}
+
       <div className="card p-fluid">
         <DataTable
           filterDisplay="row" 
@@ -834,7 +970,6 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           value={documents.data}
           editMode="row" 
           resizableColumns
-          paginator
           first={(documents.current_page - 1) * documents.per_page}
           rows={documents.per_page}
           totalRecords={documents.total}
@@ -850,32 +985,50 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           onRowToggle={(e) => setExpandedRows(e.data)}
           rowExpansionTemplate={rowExpansionTemplate} 
           scrollable 
-          scrollHeight="calc(100vh - 355px)"
+          scrollHeight="calc(100vh - 294px)"
           header={header}
           removableSort
           reorderableColumns
-          stateStorage="session" stateKey="contentconnnect-dt-state" 
+          stateStorage="session" stateKey="contentconnect-dt-state" 
           currentPageReportTemplate="Showing {first} to {last} of {totalRecords} documents" 
         >
         {/*}  <Column field="id" header="ID" sortable filter filterPlaceholder="Search by ID" style={{ minWidth: '12rem' }}></Column> */}
           <Column expander={true} style={{ width: '3rem' }} />
-          <Column field="thumbnail" body={thumbnailBodyTemplate} header="" style={{ width: '5rem', textAlign: 'center' }}></Column>
+          {visibleColumns.some(col => col.field === 'thumbnail') && (
+            <Column field="thumbnail" body={thumbnailBodyTemplate} header="" style={{ width: '5rem', textAlign: 'center' }}></Column>
+          )}
 
           
-          {!template && (
+          {!template && visibleColumns.some(col => col.field === 'order_number') && (
             <Column field="order_number" header="Order Number" filter sortable filterPlaceholder="" style={{ minWidth: '8rem' }} editor={(options) => textEditor(options)}></Column>
           )}
-          <Column field="file_name" header="File Name" filter sortable filterPlaceholder="" style={{ minWidth: '12rem' }}></Column>
-          <Column field="note" header="Note" filter sortable filterPlaceholder="" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
-          <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
-          <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
-          <Column field="status" body={statusBodyTemplate} header="Status" sortable filter filterElement={statusFilterTemplate} filterPlaceholder="" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '8rem' }}></Column>
-          <Column field="languages" body={languagesBodyTemplate} header="Languages" filter filterElement={languagesFilterTemplate} editor={(options) => languagesEditor(options)} showFilterMenu={false} style={{ minWidth: '10rem' }}></Column>
-          <Column field="contents" body={contentsBodyTemplate} header="Contents" filter filterElement={contentsFilterTemplate} editor={(options) => contentsEditor(options)} showFilterMenu={false} style={{ minWidth: '12rem' }}></Column>
+          {visibleColumns.some(col => col.field === 'file_name') && (
+            <Column field="file_name" header="File Name" filter sortable filterPlaceholder="" style={{ minWidth: '12rem' }}></Column>
+          )}
+          {visibleColumns.some(col => col.field === 'note') && (
+            <Column field="note" header="Note" filter sortable filterPlaceholder="" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
+          )}
+          {visibleColumns.some(col => col.field === 'category') && (
+            <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
+          )}
+          {visibleColumns.some(col => col.field === 'subcategory') && (
+            <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
+          )}
+          {visibleColumns.some(col => col.field === 'status') && (
+            <Column field="status" body={statusBodyTemplate} header="Status" sortable filter filterElement={statusFilterTemplate} filterPlaceholder="" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '8rem' }}></Column>
+          )}
+          {visibleColumns.some(col => col.field === 'languages') && (
+            <Column field="languages" body={languagesBodyTemplate} header="Languages" filter filterElement={languagesFilterTemplate} editor={(options) => languagesEditor(options)} showFilterMenu={false} style={{ minWidth: '10rem' }}></Column>
+          )}
+          {visibleColumns.some(col => col.field === 'contents') && (
+            <Column field="contents" body={contentsBodyTemplate} header="Contents" filter filterElement={contentsFilterTemplate} editor={(options) => contentsEditor(options)} showFilterMenu={false} style={{ minWidth: '12rem' }}></Column>
+          )}
         {/*  <Column field="created_by" header="Created By" sortable filter filterPlaceholder="Search by created by" style={{ minWidth: '12rem' }}></Column>
           <Column field="created_at" header="Created At" filter sortable filterPlaceholder="Search by created at" style={{ minWidth: '12rem' }}></Column>
           <Column field="modified_by" header="Modified By" filter sortable filterPlaceholder="Search by modified by" style={{ minWidth: '12rem' }}></Column>*/}
-          <Column field="modified_at" body={dateBodyTemplate} header="Modified At" sortable filterPlaceholder="Search by modified at" style={{ minWidth: '12rem' }}  showFilterMenu={false} ></Column>
+          {visibleColumns.some(col => col.field === 'modified_at') && (
+            <Column field="modified_at" body={dateBodyTemplate} header="Modified At" sortable filterPlaceholder="Search by modified at" style={{ minWidth: '12rem' }}  showFilterMenu={false} ></Column>
+          )}
           <Column alignFrozen="right" frozen={true} rowEditor={true} header="Actions" headerStyle={{ width: '15%', minWidth: '12rem' }} bodyStyle={{ textAlign: 'center' }} body={(rowData: any, options: ColumnBodyOptions) => (
     <>
       {options.rowEditor?.editing ? (
@@ -927,6 +1080,13 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             severity="success"
           />
           <Button
+            icon="pi pi-pen-to-square"
+            className="p-button-rounded p-button-outlined"
+            onClick={() => handleEdit(rowData)}
+            tooltipOptions={{ position: "top" }}
+            severity="secondary"
+          />
+          <Button
             icon="pi pi-trash"
             className="p-button-rounded p-button-outlined"
             tooltipOptions={{ position: "top" }}
@@ -947,6 +1107,64 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
 
         </DataTable>
       </div>
+
+      <OverlayPanel ref={columnToggleRef} className="w-80">
+        <div className="p-3">
+          <h4 className="text-lg font-semibold mb-3 text-gray-700">Column Visibility</h4>
+          <div className="space-y-2">
+            {allColumns.map((column) => {
+              const isVisible = visibleColumns.some(col => col.field === column.field);
+              return (
+                <label key={column.field} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                  <input
+                    type="checkbox"
+                    checked={isVisible}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setVisibleColumns([...visibleColumns, column]);
+                      } else {
+                        setVisibleColumns(visibleColumns.filter(col => col.field !== column.field));
+                      }
+                    }}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">{column.header}</span>
+                </label>
+              );
+            })}
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-200 space-y-2">
+            <div className="flex gap-2">
+              <Button
+                label="Show All"
+                icon="pi pi-check"
+                size="small"
+                outlined
+                onClick={() => setVisibleColumns([...allColumns])}
+                className="flex-1"
+              />
+              <Button
+                label="Hide All"
+                icon="pi pi-times"
+                size="small"
+                outlined
+                severity="secondary"
+                onClick={() => setVisibleColumns([])}
+                className="flex-1"
+              />
+            </div>
+            <Button
+              label="Use as default"
+              icon="pi pi-save"
+              size="small"
+              outlined
+              severity="help"
+              onClick={saveAsDefault}
+              className="w-full"
+            />
+          </div>
+        </div>
+      </OverlayPanel>
 
       <Toast ref={toast} position="top-right" />
     </AuthenticatedLayout>
