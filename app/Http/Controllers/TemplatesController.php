@@ -227,6 +227,14 @@ class TemplatesController extends Controller
         $existingFiles = [];
         $defaultCompanyId = auth()->user() ? auth()->user()->company_id : \App\Models\Company::first()->id;
 
+        // Ensure we have a company to work with
+        if (!$defaultCompanyId) {
+            throw new \Exception('No company found in database for template processing.');
+        }
+
+        // For initial database seeding: ensure statuses and languages are assigned to the first company
+        $this->ensureInitialDataAssignment($defaultCompanyId);
+
         // Get all subdirectories (categories) - skip root files and category-only files
         $categoryDirs = glob($templateFolder . '/*', GLOB_ONLYDIR);
 
@@ -306,10 +314,26 @@ class TemplatesController extends Controller
                         continue;
                     }
 
-                    // Get default status
-                    $defaultStatus = Status::where('company_id', $defaultCompanyId)->first();
+                    // Get default status - try company-specific first, then any active status
+                    $defaultStatus = Status::where('company_id', $defaultCompanyId)
+                        ->where('active', true)
+                        ->first();
+                    
                     if (!$defaultStatus) {
-                        Log::error("No status found in database for company {$defaultCompanyId}");
+                        // Fallback: get any active status for the company
+                        $defaultStatus = Status::where('company_id', $defaultCompanyId)->first();
+                    }
+                    
+                    if (!$defaultStatus) {
+                        // Fallback for initial seeding: get the first available status and assign it to the company
+                        $defaultStatus = Status::where('active', true)->first();
+                        if ($defaultStatus && !$defaultStatus->company_id) {
+                            $defaultStatus->update(['company_id' => $defaultCompanyId]);
+                        }
+                    }
+                    
+                    if (!$defaultStatus) {
+                        Log::error("No status found in database at all");
                         continue;
                     }
 
@@ -371,5 +395,32 @@ class TemplatesController extends Controller
             'skipped' => $skippedCount,
             'deleted' => $deletedCount
         ];
+    }
+
+    /**
+     * Ensure that statuses and languages are assigned to a company for initial database seeding
+     * 
+     * @param int $companyId The company ID to assign records to
+     * @return void
+     */
+    private function ensureInitialDataAssignment(int $companyId): void
+    {
+        // Check if there are any statuses without company assignment and assign them to the first company
+        $unassignedStatuses = Status::whereNull('company_id')->get();
+        if ($unassignedStatuses->count() > 0) {
+            foreach ($unassignedStatuses as $status) {
+                $status->update(['company_id' => $companyId]);
+            }
+            Log::info("Assigned {$unassignedStatuses->count()} unassigned statuses to company {$companyId}");
+        }
+
+        // Check if there are any languages without company assignment and assign them to the first company
+        $unassignedLanguages = Language::whereNull('company_id')->get();
+        if ($unassignedLanguages->count() > 0) {
+            foreach ($unassignedLanguages as $language) {
+                $language->update(['company_id' => $companyId]);
+            }
+            Log::info("Assigned {$unassignedLanguages->count()} unassigned languages to company {$companyId}");
+        }
     }
 }
