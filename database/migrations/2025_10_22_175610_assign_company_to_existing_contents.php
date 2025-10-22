@@ -13,6 +13,14 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Only proceed if there are existing contents that need company assignment
+        $existingContents = Content::whereNull('company_id')->count();
+        
+        if ($existingContents == 0) {
+            // No existing contents to migrate - likely a fresh installation
+            return;
+        }
+
         // Get the first company (or create one if none exists)
         $company = Company::first();
         

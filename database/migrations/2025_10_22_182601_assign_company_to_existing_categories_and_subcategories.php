@@ -13,6 +13,14 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Only proceed if there are existing categories that need company assignment
+        $existingCategories = Category::whereNull('company_id')->count();
+        
+        if ($existingCategories == 0) {
+            // No existing categories to migrate - likely a fresh installation
+            return;
+        }
+
         // Get the first company (or create one if none exists)
         $company = Company::first();
         
