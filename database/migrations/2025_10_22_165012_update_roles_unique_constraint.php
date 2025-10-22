@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -14,11 +15,11 @@ return new class extends Migration
         Schema::table('roles', function (Blueprint $table) {
             // Drop the existing unique constraint on name and guard_name
             $table->dropUnique(['name', 'guard_name']);
-            
-            // Add a compound unique constraint on name, guard_name and company_id
-            // This allows same role names across different companies
-            $table->unique(['name', 'guard_name', 'company_id'], 'roles_name_guard_company_unique');
         });
+        
+        // Manually create the index with length limits to avoid MySQL 1000 byte limit
+        // Limit name and guard_name to 100 characters each in the index
+        DB::statement('ALTER TABLE roles ADD UNIQUE KEY roles_name_guard_company_unique (name(100), guard_name(100), company_id)');
     }
 
     /**
