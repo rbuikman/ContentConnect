@@ -19,6 +19,7 @@ return new class extends Migration
         if (!$company) {
             $company = Company::create([
                 'name' => 'Default Company',
+                'numberoflicences' => 1, // Provide a default value for the required field
                 'active' => true,
             ]);
         }
