@@ -233,14 +233,19 @@ class TemplatesController extends Controller
         foreach ($categoryDirs as $categoryDir) {
             $categoryName = basename($categoryDir);
             
-            // Skip if category doesn't exist in database
+            // Find or create category in database
             $category = Category::where('name', $categoryName)
                 ->where('company_id', $defaultCompanyId)
                 ->first();
                 
             if (!$category) {
-                Log::info("Skipping category folder '{$categoryName}' - no matching category found in database");
-                continue;
+                // Create new category
+                $category = Category::create([
+                    'name' => $categoryName,
+                    'company_id' => $defaultCompanyId,
+                    'active' => true,
+                ]);
+                Log::info("Created new category: {$categoryName}");
             }
             
             Log::info("Processing category: {$categoryName}");
@@ -251,14 +256,18 @@ class TemplatesController extends Controller
             foreach ($subcategoryDirs as $subcategoryDir) {
                 $subcategoryName = basename($subcategoryDir);
                 
-                // Skip if subcategory doesn't exist in database
+                // Find or create subcategory in database
                 $subcategory = SubCategory::where('name', $subcategoryName)
                     ->where('category_id', $category->id)
                     ->first();
                     
                 if (!$subcategory) {
-                    Log::info("Skipping subcategory folder '{$subcategoryName}' - no matching subcategory found in database");
-                    continue;
+                    // Create new subcategory
+                    $subcategory = SubCategory::create([
+                        'name' => $subcategoryName,
+                        'category_id' => $category->id,
+                    ]);
+                    Log::info("Created new subcategory: {$subcategoryName} under category: {$categoryName}");
                 }
                 
                 Log::info("Processing subcategory: {$subcategoryName}");
