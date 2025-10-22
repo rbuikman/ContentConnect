@@ -276,14 +276,15 @@ export default function CreateDocumentModal({
   console.log("Errors:", errors);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-gray-200/80" onClick={onClose} />
 
       <div
-        className="relative bg-white rounded-lg shadow-lg max-w-lg w-full p-4 max-h-[90vh] overflow-y-auto"
+        className="relative bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[95vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-3">
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
           <h3 className="text-lg font-semibold text-gray-900">
             {template ? 'Create Template' : 'Create Document'}
           </h3>
@@ -296,7 +297,10 @@ export default function CreateDocumentModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <form id="document-form" onSubmit={handleSubmit} className="space-y-3">
+            {/* All form fields go here - content will be scrollable */}
           {/* Order Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Order Number *</label>
@@ -472,7 +476,7 @@ export default function CreateDocumentModal({
               itemTemplate={(option) => (
                 <div className="flex items-center gap-2">
                   <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-sm`}></i>
-                  <span>{option?.name || 'Unknown'}</span>
+                  <span>{option?.name || '-'}</span>
                   <span className="text-xs text-gray-500">
                     ({option?.is_network_path ? 'Network' : 'Local'})
                   </span>
@@ -481,7 +485,7 @@ export default function CreateDocumentModal({
               selectedItemTemplate={(option) => (
                 <div className="flex items-center gap-1">
                   <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-xs`}></i>
-                  <span>{option?.name || 'Unknown'}</span>
+                  <span>{option?.name || '-'}</span>
                 </div>
               )}
             />
@@ -511,23 +515,26 @@ export default function CreateDocumentModal({
             </div>
           )}
 
-          {/* Buttons */}
-          <div className="flex justify-between mt-3 pt-2 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 bg-gray-300 rounded hover:bg-gray-400 text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm"
-            >
-              {template ? 'Create Template' : 'Create Document'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
+        
+        {/* Fixed Buttons */}
+        <div className="flex justify-between p-4 pt-2 border-t border-gray-200 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 bg-gray-300 rounded hover:bg-gray-400 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="document-form"
+            className="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm"
+          >
+            {template ? 'Create Template' : 'Create Document'}
+          </button>
+        </div>
       </div>
     </div>
   );

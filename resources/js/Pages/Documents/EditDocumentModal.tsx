@@ -162,14 +162,15 @@ export default function EditDocumentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-gray-200/80" onClick={onClose} />
 
       <div
-        className="relative bg-white rounded-lg shadow-lg max-w-lg w-full p-6"
+        className="relative bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[95vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
           <h3 className="text-lg font-semibold text-gray-900">Edit Document</h3>
           <button
             type="button"
@@ -180,7 +181,10 @@ export default function EditDocumentModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <form id="edit-document-form" onSubmit={handleSubmit} className="space-y-4">
+            {/* All form fields go here - content will be scrollable */}
           {/* Order Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Order Number</label>
@@ -310,7 +314,7 @@ export default function EditDocumentModal({
               itemTemplate={(option) => (
                 <div className="flex items-center gap-2">
                   <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-sm`}></i>
-                  <span>{option?.name || 'Unknown'}</span>
+                  <span>{option?.name || '-'}</span>
                   <span className="text-xs text-gray-500">
                     ({option?.is_network_path ? 'Network' : 'Local'})
                   </span>
@@ -319,30 +323,33 @@ export default function EditDocumentModal({
               selectedItemTemplate={(option) => (
                 <div className="flex items-center gap-1">
                   <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-xs`}></i>
-                  <span>{option?.name || 'Unknown'}</span>
+                  <span>{option?.name || '-'}</span>
                 </div>
               )}
             />
             {errors?.content_ids && <p className="text-red-600 text-sm">{errors.content_ids}</p>}
           </div>
 
-          {/* Buttons */}
-          <div className="flex justify-between mt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-            >
-              Save
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
+        
+        {/* Fixed Buttons */}
+        <div className="flex justify-between p-4 pt-2 border-t border-gray-200 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="edit-document-form"
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
   );

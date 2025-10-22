@@ -4,6 +4,19 @@ import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, router, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState, useEffect } from 'react';
+import {
+    DocumentTextIcon,
+    DocumentDuplicateIcon,
+    FolderIcon,
+    BuildingOfficeIcon,
+    UserGroupIcon,
+    UsersIcon,
+    TagIcon,
+    RectangleStackIcon,
+    LanguageIcon,
+    UserIcon,
+    ArrowRightOnRectangleIcon
+} from '@heroicons/react/24/outline';
 
 export default function Authenticated({
     header,
@@ -11,8 +24,14 @@ export default function Authenticated({
 }: PropsWithChildren<{ header?: ReactNode }>) {
     const page = usePage();
     const user = page.props.auth?.user;
+    const permissions = page.props.auth?.permissions || [];
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
+
+    // Helper function to check if user has permission
+    const hasPermission = (permission: string) => {
+        return permissions.includes(permission);
+    };
 
     // 🔐 Redirect to /login if user is not logged in
     useEffect(() => {
@@ -49,7 +68,7 @@ export default function Authenticated({
                                                 type="button"
                                                 className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
                                             >
-                                                {user.name}
+                                                {user.name} {user.company && `(${user.company.name})`}
 
                                                 <svg
                                                     className="-me-0.5 ms-2 h-4 w-4"
@@ -68,40 +87,87 @@ export default function Authenticated({
                                     </Dropdown.Trigger>
 
                                     <Dropdown.Content>
-                                        <Dropdown.Link href={route('documents.index')}>
-                                            Documents
-                                        </Dropdown.Link>
-                                        <Dropdown.Link href={route('templates.index')}>
-                                            Templates
-                                        </Dropdown.Link>
-                                        <Dropdown.Link href={route('contents.index')}>
-                                            Contents
-                                        </Dropdown.Link>
+                                        {hasPermission('document-index') && (
+                                            <Dropdown.Link href={route('documents.index')} className="flex items-center gap-2">
+                                                <DocumentTextIcon className="h-4 w-4" />
+                                                Documents
+                                            </Dropdown.Link>
+                                        )}
+                                        {hasPermission('templates-index') && (
+                                            <Dropdown.Link href={route('templates.index')} className="flex items-center gap-2">
+                                                <DocumentDuplicateIcon className="h-4 w-4" />
+                                                Templates
+                                            </Dropdown.Link>
+                                        )}
+                                        {hasPermission('content-index') && (
+                                            <Dropdown.Link href={route('contents.index')} className="flex items-center gap-2">
+                                                <FolderIcon className="h-4 w-4" />
+                                                Contents
+                                            </Dropdown.Link>
+                                        )}
+                                        
+                                        {hasPermission('company-index') && (
+                                            <hr className="my-1 border-gray-200" />
+                                        )}
+
+                                        {hasPermission('company-index') && (
+                                            <Dropdown.Link href={route('companies.index')} className="flex items-center gap-2">
+                                                <BuildingOfficeIcon className="h-4 w-4" />
+                                                Companies
+                                            </Dropdown.Link>
+                                        )}
+
+                                        {(hasPermission('role-index') || hasPermission('user-index')) && (
+                                            <hr className="my-1 border-gray-200" />
+                                        )}
+
+                                        {hasPermission('role-index') && (
+                                            <Dropdown.Link href={route('roles.index')} className="flex items-center gap-2">
+                                                <UserGroupIcon className="h-4 w-4" />
+                                                Roles
+                                            </Dropdown.Link>
+                                        )}
+                                        {hasPermission('user-index') && (
+                                            <Dropdown.Link href={route('users.index')} className="flex items-center gap-2">
+                                                <UsersIcon className="h-4 w-4" />
+                                                Users
+                                            </Dropdown.Link>
+                                        )}
+
+                                        {( hasPermission('status-index') || hasPermission('category-index') || hasPermission('company-index') || hasPermission('language-index')) && (
+                                            <hr className="my-1 border-gray-200" />
+                                        )}
+
+                                        {hasPermission('status-index') && (
+                                            <Dropdown.Link href={route('statuses.index')} className="flex items-center gap-2">
+                                                <TagIcon className="h-4 w-4" />
+                                                Statuses
+                                            </Dropdown.Link>
+                                        )}
+                                        {hasPermission('category-index') && (
+                                            <Dropdown.Link href={route('categories.index')} className="flex items-center gap-2">
+                                                <RectangleStackIcon className="h-4 w-4" />
+                                                Categories
+                                            </Dropdown.Link>
+                                        )}
+                                        {hasPermission('language-index') && (
+                                            <Dropdown.Link href={route('languages.index')} className="flex items-center gap-2">
+                                                <LanguageIcon className="h-4 w-4" />
+                                                Languages
+                                            </Dropdown.Link>
+                                        )}
                                         <hr className="my-1 border-gray-200" />
-                                        <Dropdown.Link href={route('roles.index')}>
-                                            Roles
-                                        </Dropdown.Link>
-                                        <Dropdown.Link href={route('users.index')}>
-                                            Users
-                                        </Dropdown.Link>
-                                        <Dropdown.Link href={route('statuses.index')}>
-                                            Statuses
-                                        </Dropdown.Link>
-                                        <Dropdown.Link href={route('categories.index')}>
-                                            Categories
-                                        </Dropdown.Link>
-                                        <Dropdown.Link href={route('languages.index')}>
-                                            Languages
-                                        </Dropdown.Link>
-                                        <hr className="my-1 border-gray-200" />
-                                        <Dropdown.Link href={route('profile.edit')}>
-                                            Profile
+                                        <Dropdown.Link href={route('profile.edit')} className="flex items-center gap-2">
+                                            <UserIcon className="h-4 w-4" />
+                                            My Profile
                                         </Dropdown.Link>
                                         <Dropdown.Link
                                             href={route('logout')}
                                             method="post"
                                             as="button"
+                                            className="flex items-center gap-2"
                                         >
+                                            <ArrowRightOnRectangleIcon className="h-4 w-4" />
                                             Log Out
                                         </Dropdown.Link>
                                     </Dropdown.Content>
@@ -160,33 +226,66 @@ export default function Authenticated({
                     }
                 >
                     <div className="space-y-1 pb-3 pt-2">
-                        <Dropdown.Link href={route('documents.index')}>
-                            Documents
-                        </Dropdown.Link>
-                        <Dropdown.Link href={route('templates.index')}>
-                            Templates
-                        </Dropdown.Link>
-                        <Dropdown.Link href={route('contents.index')}>
-                            Contents
-                        </Dropdown.Link>
-                        {/*<ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink href={route('roles.index')}>
-                            Roles
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink href={route('users.index')}>
-                            Users
-                        </ResponsiveNavLink>*/}
+                        {hasPermission('document-index') && (
+                            <ResponsiveNavLink href={route('documents.index')} className="flex items-center gap-2">
+                                <DocumentTextIcon className="h-4 w-4" />
+                                Documents
+                            </ResponsiveNavLink>
+                        )}
+                        {hasPermission('templates-index') && (
+                            <ResponsiveNavLink href={route('templates.index')} className="flex items-center gap-2">
+                                <DocumentDuplicateIcon className="h-4 w-4" />
+                                Templates
+                            </ResponsiveNavLink>
+                        )}
+                        {hasPermission('content-index') && (
+                            <ResponsiveNavLink href={route('contents.index')} className="flex items-center gap-2">
+                                <FolderIcon className="h-4 w-4" />
+                                Contents
+                            </ResponsiveNavLink>
+                        )}
+                        {hasPermission('company-index') && (
+                            <ResponsiveNavLink href={route('companies.index')} className="flex items-center gap-2">
+                                <BuildingOfficeIcon className="h-4 w-4" />
+                                Companies
+                            </ResponsiveNavLink>
+                        )}
+                        {hasPermission('role-index') && (
+                            <ResponsiveNavLink href={route('roles.index')} className="flex items-center gap-2">
+                                <UserGroupIcon className="h-4 w-4" />
+                                Roles
+                            </ResponsiveNavLink>
+                        )}
+                        {hasPermission('user-index') && (
+                            <ResponsiveNavLink href={route('users.index')} className="flex items-center gap-2">
+                                <UsersIcon className="h-4 w-4" />
+                                Users
+                            </ResponsiveNavLink>
+                        )}
+                        {hasPermission('status-index') && (
+                            <ResponsiveNavLink href={route('statuses.index')} className="flex items-center gap-2">
+                                <TagIcon className="h-4 w-4" />
+                                Statuses
+                            </ResponsiveNavLink>
+                        )}
+                        {hasPermission('category-index') && (
+                            <ResponsiveNavLink href={route('categories.index')} className="flex items-center gap-2">
+                                <RectangleStackIcon className="h-4 w-4" />
+                                Categories
+                            </ResponsiveNavLink>
+                        )}
+                        {hasPermission('language-index') && (
+                            <ResponsiveNavLink href={route('languages.index')} className="flex items-center gap-2">
+                                <LanguageIcon className="h-4 w-4" />
+                                Languages
+                            </ResponsiveNavLink>
+                        )}
                     </div>
 
                     <div className="border-t border-gray-200 pb-1 pt-4">
                         <div className="px-4">
                             <div className="text-base font-medium text-gray-800">
-                                {user.name}
+                                {user.name} {user.company && `(${user.company.name})`}
                             </div>
                             <div className="text-sm font-medium text-gray-500">
                                 {user.email}
@@ -194,14 +293,17 @@ export default function Authenticated({
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
-                                Profile
+                            <ResponsiveNavLink href={route('profile.edit')} className="flex items-center gap-2">
+                                <UserIcon className="h-4 w-4" />
+                                My Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"
                                 href={route('logout')}
                                 as="button"
+                                className="flex items-center gap-2"
                             >
+                                <ArrowRightOnRectangleIcon className="h-4 w-4" />
                                 Log Out
                             </ResponsiveNavLink>
                         </div>

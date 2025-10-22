@@ -12,6 +12,7 @@ class Document extends Model
     protected $table = 'documents';
 
     protected $fillable = [
+        'company_id',
         'order_number',
         'file_name',
         'note',
@@ -24,7 +25,7 @@ class Document extends Model
         'created_by',
         'created_at',
         'modified_by',
-        'modified_at'
+        'modified_at',
     ];
 
     protected $casts = [
@@ -46,6 +47,14 @@ class Document extends Model
     public function status()
     {
         return $this->belongsTo(Status::class, 'status_id');
+    }
+
+    /**
+     * Get the company that owns the document.
+     */
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function languages()
@@ -80,6 +89,14 @@ class Document extends Model
     public function scopeDocuments($query)
     {
         return $query->where('template', false);
+    }
+
+    /**
+     * Scope to filter documents by company
+     */
+    public function scopeForCompany($query, $companyId)
+    {
+        return $query->where('company_id', $companyId);
     }
 
     // Scope for non-deleted records

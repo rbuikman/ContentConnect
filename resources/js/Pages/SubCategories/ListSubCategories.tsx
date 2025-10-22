@@ -33,9 +33,16 @@ interface Category {
 }
 
 export default function ListSubCategories({ subcategories, filters = {}, categories }: ListSubCategoriesProps) {
+  const page = usePage();
+  const permissions = page.props.auth?.permissions || [];
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingSubCategory, setEditingSubCategory] = useState<SubCategory | null>(null);
   const [search, setSearch] = useState(filters.search || '');
+
+  // Helper function to check if user has permission
+  const hasPermission = (permission: string) => {
+    return permissions.includes(permission);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,12 +74,14 @@ export default function ListSubCategories({ subcategories, filters = {}, categor
               className="flex-1 rounded border-gray-300 shadow-sm px-3 py-2"
             />
           </form>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
-          >
-            Create SubCategory
-          </button>
+          {hasPermission('subcategory-create') && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+            >
+              Create SubCategory
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -95,18 +104,22 @@ export default function ListSubCategories({ subcategories, filters = {}, categor
                     <td className="px-6 py-4">{subcategory.category?.name || "No category"}</td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center gap-2">
-                        <button
-                          onClick={() => setEditingSubCategory(subcategory)}
-                          className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(subcategory.id)}
-                          className="bg-red-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-red-600 transition"
-                        >
-                          Delete
-                        </button>
+                        {hasPermission('subcategory-edit') && (
+                          <button
+                            onClick={() => setEditingSubCategory(subcategory)}
+                            className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {hasPermission('subcategory-delete') && (
+                          <button
+                            onClick={() => handleDelete(subcategory.id)}
+                            className="bg-red-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-red-600 transition"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -133,13 +146,13 @@ export default function ListSubCategories({ subcategories, filters = {}, categor
         </div>
 
         {/* Modals */}
-        {showCreateModal && (
+        {showCreateModal && hasPermission('subcategory-create') && (
           <CreateSubCategoryModal
             onClose={() => setShowCreateModal(false)}
             categories={categories} // Pass categories to the modal
           />
         )}
-        {editingSubCategory && (
+        {editingSubCategory && hasPermission('subcategory-edit') && (
           <EditSubCategoryModal
             subcategory={{ ...editingSubCategory, category_id: editingSubCategory.category?.id || 0 }}
             categories={categories} // Pass categories to the modal

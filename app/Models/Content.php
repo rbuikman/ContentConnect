@@ -10,6 +10,7 @@ class Content extends Model
     use HasFactory;
 
     protected $fillable = [
+        'company_id',
         'name',
         'excel_file_path',
         'is_network_path',
@@ -28,5 +29,21 @@ class Content extends Model
     public function documents()
     {
         return $this->belongsToMany(Document::class, 'document_content');
+    }
+
+    /**
+     * Get the company that owns the content.
+     */
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Scope to filter content by company
+     */
+    public function scopeForCompany($query, $companyId)
+    {
+        return $query->where('company_id', $companyId);
     }
 }

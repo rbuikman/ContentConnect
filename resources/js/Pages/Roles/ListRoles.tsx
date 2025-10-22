@@ -1,6 +1,6 @@
 // resources/js/Pages/Roles/ListRoles.tsx
 import React, { useState } from "react";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import Pagination from "../../Shared/Pagination";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import CreateRoleModal from "./CreateRoleModal";
@@ -11,11 +11,20 @@ interface Permission {
   name: string;
 }
 
+interface Company {
+  id: number;
+  name: string;
+  active: boolean;
+}
+
 interface Role {
   id: number;
   name: string;
   guard_name: string;
   permissions: Permission[];
+  company_id?: number;
+  company?: Company;
+  users_count?: number;
 }
 
 interface RolesData {
@@ -28,13 +37,36 @@ interface RolesData {
 interface ListRolesProps {
   roles: RolesData;
   permissions: Permission[];
+  companies?: Company[];
   filters?: { search?: string };
 }
 
-export default function ListRoles({ roles, permissions, filters }: ListRolesProps) {
+export default function ListRoles({ roles, permissions, companies = [], filters }: ListRolesProps) {
+  const page = usePage();
+  const userPermissions = page.props.auth?.permissions || [];
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [search, setSearch] = useState(filters?.search || "");
+
+  // Filter roles based on user permissions
+  const filteredRoles = React.useMemo(() => {
+    const isSuperAdmin = userPermissions.includes('superadmin');
+    
+    if (isSuperAdmin) {
+      return roles;
+    }
+    
+    // Filter out SuperAdmin role if user doesn't have superadmin permission
+    return {
+      ...roles,
+      data: roles.data.filter(role => role.name !== 'SuperAdmin')
+    };
+  }, [roles, userPermissions]);
+
+  // Helper function to check if user has permission
+  const hasPermission = (permission: string) => {
+    return userPermissions.includes(permission);
+  };
 
   const handlePaginate = (page: number) => {
     router.get(
@@ -45,7 +77,20 @@ export default function ListRoles({ roles, permissions, filters }: ListRolesProp
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this role?")) {
+    const role = filteredRoles.data.find(r => r.id === id);
+    if (!role) return;
+    
+    const usersCount = role.users_count || 0;
+    
+    let confirmMessage = `Are you sure you want to delete the role "${role.name}"?`;
+    
+    if (usersCount > 0) {
+      confirmMessage = `Cannot delete role "${role.name}" because it is assigned to ${usersCount} user(s).\n\nPlease reassign the users to different roles first.`;
+      alert(confirmMessage);
+      return;
+    }
+    
+    if (confirm(confirmMessage)) {
       router.delete(route("roles.destroy", id));
     }
   };
@@ -64,12 +109,14 @@ export default function ListRoles({ roles, permissions, filters }: ListRolesProp
       <div className="mx-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 my-6">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
-          >
-            Create Role
-          </button>
+          {hasPermission('role-create') && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+            >
+              Create Role
+            </button>
+          )}
           <form onSubmit={handleSearch} className="w-full sm:flex-1 max-w-md">
             <div className="relative">
               <input
@@ -99,13 +146,17 @@ export default function ListRoles({ roles, permissions, filters }: ListRolesProp
                 <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
                 <th className="px-6 py-3 font-semibold">Guard</th>
+                {userPermissions.includes('superadmin') && (
+                  <th className="px-6 py-3 font-semibold">Company</th>
+                )}
+                <th className="px-6 py-3 font-semibold">Users</th>
                 <th className="px-6 py-3 font-semibold">Permissions</th>
                 <th className="px-6 py-3 font-semibold text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {roles.data.length > 0 ? (
-                roles.data.map((role) => (
+              {filteredRoles.data.length > 0 ? (
+                filteredRoles.data.map((role) => (
                   <tr
                     key={role.id}
                     className="border-b hover:bg-gray-50 transition"
@@ -115,23 +166,57 @@ export default function ListRoles({ roles, permissions, filters }: ListRolesProp
                       {role.name}
                     </td>
                     <td className="px-6 py-4">{role.guard_name}</td>
+                    {userPermissions.includes('superadmin') && (
+                      <td className="px-6 py-4">
+                        {role.company ? (
+                          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                            {role.company.name}
+                          </span>
+                        ) : (
+                          <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-0.5 rounded">
+                            Global
+                          </span>
+                        )}
+                      </td>
+                    )}
+                    <td className="px-6 py-4">
+                      <span className={`text-sm font-medium ${
+                        (role.users_count || 0) > 0 ? 'text-blue-600' : 'text-gray-500'
+                      }`}>
+                        {role.users_count || 0} user{(role.users_count || 0) !== 1 ? 's' : ''}
+                      </span>
+                    </td>
                     <td className="px-6 py-4">
                       {role.permissions.map((p) => p.name).join(", ")}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center gap-2">
-                        <button
-                          onClick={() => setEditingRole(role)}
-                          className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(role.id)}
-                          className="bg-red-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-red-600 transition"
-                        >
-                          Delete
-                        </button>
+                        {hasPermission('role-edit') && (
+                          <button
+                            onClick={() => setEditingRole(role)}
+                            className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {hasPermission('role-delete') && (
+                          <button
+                            onClick={() => handleDelete(role.id)}
+                            disabled={(role.users_count || 0) > 0}
+                            className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                              (role.users_count || 0) > 0
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-red-500 text-white hover:bg-red-600'
+                            }`}
+                            title={
+                              (role.users_count || 0) > 0
+                                ? `Cannot delete: ${role.users_count} user(s) assigned`
+                                : 'Delete role'
+                            }
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -139,7 +224,7 @@ export default function ListRoles({ roles, permissions, filters }: ListRolesProp
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={userPermissions.includes('superadmin') ? 6 : 5}
                     className="px-6 py-4 text-center text-gray-500"
                   >
                     No roles found.
@@ -153,24 +238,26 @@ export default function ListRoles({ roles, permissions, filters }: ListRolesProp
         {/* Pagination */}
         <div className="my-10">
           <Pagination
-            current_page={roles.current_page}
-            total={roles.total}
-            per_page={roles.per_page}
+            current_page={filteredRoles.current_page}
+            total={filteredRoles.total}
+            per_page={filteredRoles.per_page}
             onPaginate={handlePaginate}
           />
         </div>
 
         {/* Modals */}
-        {showCreateModal && (
+        {showCreateModal && hasPermission('role-create') && (
           <CreateRoleModal
             permissions={permissions}
+            companies={companies}
             onClose={() => setShowCreateModal(false)}
           />
         )}
-        {editingRole && (
+        {editingRole && hasPermission('role-edit') && (
           <EditRoleModal
             role={editingRole}
             permissions={permissions}
+            companies={companies}
             onClose={() => setEditingRole(null)}
           />
         )}

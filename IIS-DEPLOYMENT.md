@@ -1,4 +1,4 @@
-# IIS Deployment Checklist for TAFCO DMS
+# IIS Deployment Checklist for ContentConnect
 
 ## Server Prerequisites
 - [ ] IIS with PHP support installed
@@ -8,7 +8,7 @@
 - [ ] Microsoft Visual C++ Redistributable installed
 
 ## Application Setup
-- [ ] Copy application files to IIS directory (usually C:\inetpub\wwwroot\tafco-dms)
+- [ ] Copy application files to IIS directory (usually C:\inetpub\wwwroot\contentconnnect)
 - [ ] Set IIS document root to `/public` folder
 - [ ] Copy `.env.example` to `.env` and configure
 - [ ] Run `composer install --optimize-autoloader --no-dev`

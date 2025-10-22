@@ -128,6 +128,8 @@ const defaultFilters: DataTableFilterMeta = {
 
 const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, categories, subcategories, languages, contents, templates, template = false, webeditorUrl, webeditorDocumentPath }) => {
     const { flash, errors } = usePage().props as any;
+    const page = usePage();
+    const permissions = page.props.auth?.permissions || [];
     const [loading, setLoading] = useState<boolean>(true);
     const [globalFilterValue, setGlobalFilterValue] = useState<string>('');
     const [filters, setFilters] = useState<DataTableFilterMeta>(defaultFilters);
@@ -138,6 +140,11 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     const [expandedRows, setExpandedRows] = useState<any>(null);
     const toast = useRef<Toast>(null);
     const columnToggleRef = useRef<OverlayPanel>(null);
+
+    // Helper function to check if user has permission
+    const hasPermission = (permission: string) => {
+        return permissions.includes(permission);
+    };
 
     // Column visibility state
     const allColumns: ColumnConfig[] = [
@@ -713,12 +720,14 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                   Update Templates from storage
                 </button>
               ) : (
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
-                >
-                  Create&nbsp;Document
-                </button>
+                hasPermission('document-create') && (
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+                  >
+                    Create&nbsp;Document
+                  </button>
+                )
               )}
               <div className="flex items-center gap-2">
                 <IconField iconPosition="right" className="w-64">
@@ -879,16 +888,19 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     const openUrlTemplate = (rowData: Document) => {
         return (
           <div>
+            {!template && (
+              <Button
+                  label=""
+                  icon="pi pi-external-link"
+                  className="p-button-sm p-button-outlined"
+                  onClick={() => window.open(`${webeditorUrl}?document=${webeditorDocumentPath}/${rowData.category.name}/${rowData.subcategory.name}/${rowData.file_name}`, '_blank')}
+              />
+            )}
             <Button
-                label=""
-                icon="pi pi-external-link"
-                className="p-button-sm p-button-outlined"
-                onClick={() => window.open(`${webeditorUrl}?document=${webeditorDocumentPath}/${rowData.category.name}/${rowData.subcategory.name}/${rowData.file_name}`, '_blank')}
-            />            <Button
                 label=""
                 icon="pi pi-download"
                 className="p-button-sm p-button-outlined"
-                onClick={() => window.open(`/storage/${template ? 'templates' : 'documents'}/${rowData.file_name}`, '_blank')}
+                onClick={() => window.open(`/${template ? 'templates' : 'documents'}/download/${rowData.id}`, '_blank')}
             />
             </div>
         );
@@ -920,7 +932,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
 
         <ConfirmDialog /> {/* Ensure ConfirmDialog is rendered */}
 
-        {showCreateModal && (
+        {showCreateModal && hasPermission('document-create') && (
           <CreateDocumentModal
             categories={categories}
             subcategories={subcategories || []} // Ensure it's always an array
@@ -933,7 +945,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           />
         )}
 
-        {showEditModal && selectedDocument && (
+        {showEditModal && selectedDocument && hasPermission('document-edit') && (
           <EditDocumentModal
             document={{
               id: selectedDocument.id,
@@ -995,7 +1007,17 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         {/*}  <Column field="id" header="ID" sortable filter filterPlaceholder="Search by ID" style={{ minWidth: '12rem' }}></Column> */}
           <Column expander={true} style={{ width: '3rem' }} />
           {visibleColumns.some(col => col.field === 'thumbnail') && (
-            <Column field="thumbnail" body={thumbnailBodyTemplate} header="" style={{ width: '5rem', textAlign: 'center' }}></Column>
+            <Column 
+              field="thumbnail" 
+              body={thumbnailBodyTemplate} 
+              header="" 
+              style={{ 
+                width: '5rem', 
+                minWidth: '5rem', 
+                maxWidth: '5rem', 
+                textAlign: 'center' 
+              }}
+            ></Column>
           )}
 
           
@@ -1006,7 +1028,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             <Column field="file_name" header="File Name" filter sortable filterPlaceholder="" style={{ minWidth: '12rem' }}></Column>
           )}
           {visibleColumns.some(col => col.field === 'note') && (
-            <Column field="note" header="Note" filter sortable filterPlaceholder="" style={{ minWidth: '12rem' }} editor={(options) => textEditor(options)}></Column>
+            <Column field="note" header="Note" filter sortable filterPlaceholder="" style={{ minWidth: '18rem' }} editor={(options) => textEditor(options)}></Column>
           )}
           {visibleColumns.some(col => col.field === 'category') && (
             <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
@@ -1055,17 +1077,19 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         </div>
       ) : (
         <div className="flex gap-1 justify-center">
-          <Button
-            icon="pi pi-external-link"
-            className="p-button-rounded p-button-outlined"
-            onClick={() => window.open(`${webeditorUrl}?document=${webeditorDocumentPath}/${rowData.category.name}/${rowData.subcategory.name}/${rowData.file_name}`, '_blank')}
-            tooltipOptions={{ position: "top" }}
-            severity="info"
-          />
+          {!template && (
+            <Button
+              icon="pi pi-external-link"
+              className="p-button-rounded p-button-outlined"
+              onClick={() => window.open(`${webeditorUrl}?document=${webeditorDocumentPath}/${rowData.category.name}/${rowData.subcategory.name}/${rowData.file_name}`, '_blank')}
+              tooltipOptions={{ position: "top" }}
+              severity="info"
+            />
+          )}
           <Button
             icon="pi pi-download"
             className="p-button-rounded p-button-outlined"
-            onClick={() => window.open(`/storage/${template ? 'templates' : 'documents'}/${rowData.file_name}`, '_blank')}
+            onClick={() => window.open(`/${template ? 'templates' : 'documents'}/download/${rowData.id}`, '_blank')}
             tooltipOptions={{ position: "top" }}
             severity="help"
           />
@@ -1079,27 +1103,31 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             tooltipOptions={{ position: "top" }}
             severity="success"
           />
-          <Button
-            icon="pi pi-pen-to-square"
-            className="p-button-rounded p-button-outlined"
-            onClick={() => handleEdit(rowData)}
-            tooltipOptions={{ position: "top" }}
-            severity="secondary"
-          />
-          <Button
-            icon="pi pi-trash"
-            className="p-button-rounded p-button-outlined"
-            tooltipOptions={{ position: "top" }}
-            severity="danger"
-            onClick={() =>
-              confirmDialog({
-                message: "Are you sure you want to delete?",
-                header: "Confirmation",
-                icon: "pi pi-exclamation-triangle",
-                accept: () => handleDelete(rowData.id),
-              })
-            }
-          />
+          {hasPermission('document-edit') && (
+            <Button
+              icon="pi pi-pen-to-square"
+              className="p-button-rounded p-button-outlined"
+              onClick={() => handleEdit(rowData)}
+              tooltipOptions={{ position: "top" }}
+              severity="secondary"
+            />
+          )}
+          {hasPermission('document-delete') && (
+            <Button
+              icon="pi pi-trash"
+              className="p-button-rounded p-button-outlined"
+              tooltipOptions={{ position: "top" }}
+              severity="danger"
+              onClick={() =>
+                confirmDialog({
+                  message: "Are you sure you want to delete?",
+                  header: "Confirmation",
+                  icon: "pi pi-exclamation-triangle",
+                  accept: () => handleDelete(rowData.id),
+                })
+              }
+            />
+          )}
         </div>
       )}
     </>

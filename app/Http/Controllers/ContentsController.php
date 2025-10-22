@@ -16,10 +16,12 @@ class ContentsController extends Controller
     public function index(Request $request)
     {
         $search = $request->get('search');
-        $page = $request->get('page', 1);
-        $perPage = 10;
 
         $query = Content::query()->orderBy('created_at', 'desc');
+
+        // Apply company scoping - always filter by user's company
+        $user = Auth::user();
+        $query->forCompany($user->company_id);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -27,7 +29,7 @@ class ContentsController extends Controller
             });
         }
 
-        $contents = $query->paginate($perPage, ['*'], 'page', $page);
+        $contents = $query->paginate(0);
 
         return Inertia::render('Contents/ListContents', [
             'contents' => $contents,
@@ -77,6 +79,7 @@ class ContentsController extends Controller
             'excel_file_path' => $filePath,
             'is_network_path' => $isNetworkPath,
             'active' => $request->boolean('active', true), // Default to true
+            'company_id' => Auth::user()->company_id,
             'created_by' => Auth::user()->name,
             'modified_by' => Auth::user()->name,
         ]);
@@ -89,6 +92,12 @@ class ContentsController extends Controller
      */
     public function update(Request $request, Content $content)
     {
+        // Check company authorization
+        $user = Auth::user();
+        if ($content->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to content from another company.');
+        }
+
         $isNetworkPath = $request->boolean('is_network_path');
         
         $content->name = $request->name;
@@ -147,6 +156,12 @@ class ContentsController extends Controller
      */
     public function destroy(Content $content)
     {
+        // Check company authorization
+        $user = Auth::user();
+        if ($content->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to content from another company.');
+        }
+
         // Delete the associated file only if it's a local file (not a network path)
         if (!$content->is_network_path && $content->excel_file_path && file_exists($content->excel_file_path)) {
             unlink($content->excel_file_path);
@@ -162,6 +177,12 @@ class ContentsController extends Controller
      */
     public function download(Content $content)
     {
+        // Check company authorization
+        $user = Auth::user();
+        if ($content->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to content from another company.');
+        }
+
         if (!$content->excel_file_path) {
             abort(404, 'No file path specified.');
         }

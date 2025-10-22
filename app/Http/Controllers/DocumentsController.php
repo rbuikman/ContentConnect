@@ -20,8 +20,13 @@ class DocumentsController extends Controller
 
         $documents = Document::with(['category', 'subcategory', 'status', 'baseTemplate', 'languages', 'contents']) // Added 'contents' relationship
             ->where('template', false) // Filter for documents only (not templates)
-            ->where('deleted', false) // Filter out deleted records
-            ->when($query, function($q) use ($query) {
+            ->where('deleted', false); // Filter out deleted records
+
+        // Apply company scoping - always filter by user's company
+        $user = auth()->user();
+        $documents->forCompany($user->company_id);
+
+        $documents = $documents->when($query, function($q) use ($query) {
                 $q->where('order_number', 'like', "%{$query}%")
                 ->orWhere('file_name', 'like', "%{$query}%");
             })
@@ -33,15 +38,15 @@ class DocumentsController extends Controller
             'documents' => $documents ?? [
                 'data' => []
             ],
-            'categories' => Category::all(),
-            'subcategories' => SubCategory::all(),
-            'statuses' => Status::where('active', true)->get(), // Add only active statuses to props
-            'languages' => Language::where('active', true)->get(), // Add only active languages to props
-            'contents' => Content::where('active', true)->get(['id', 'name', 'excel_file_path', 'is_network_path']), // Add only active contents for selection
-            'templates' => Document::where('template', true)->where('deleted', false)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']), // Add templates for selection with relationships
+            'categories' => Category::forCompany($user->company_id)->active()->get(),
+            'subcategories' => SubCategory::forCompany($user->company_id)->get(),
+            'statuses' => Status::where('active', true)->forCompany($user->company_id)->get(),
+            'languages' => Language::where('active', true)->forCompany($user->company_id)->get(),
+            'contents' => Content::where('active', true)->forCompany($user->company_id)->get(['id', 'name', 'excel_file_path', 'is_network_path']),
+            'templates' => Document::where('template', true)->where('deleted', false)->forCompany($user->company_id)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']),
             'template' => false, // Pass template parameter for documents
             'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
-            'webeditorDocumentPath' => config('app.webeditor_document_path'), // Add document path from config
+            'webeditorDocumentPath' => str_replace('{company}', $user->company->name, config('app.webeditor_document_path')), // Add document path from config
         ]);
     }
 
@@ -76,6 +81,7 @@ class DocumentsController extends Controller
             'status_id' => $request->status_id,
             'template' => false, // Always set template to false for documents
             'template_id' => $request->template_id, // Reference to template if provided
+            'company_id' => auth()->user()->company_id,
             'created_by' => auth()->user()->name,
             'created_at' => now(),
             'modified_by' => auth()->user()->name,
@@ -120,7 +126,9 @@ class DocumentsController extends Controller
 
             // Get storage paths from environment
             $templatesPath = env('CONTENTCONNECT_STORAGE_TEMPLATES');
+            $templatesPath = str_replace('{company}', $document->company->name, $templatesPath);
             $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
+            $documentsPath = str_replace('{company}', $document->company->name, $documentsPath);
 
             if (!$templatesPath || !$documentsPath) {
                 Log::error('Storage paths not configured in environment');
@@ -245,6 +253,12 @@ class DocumentsController extends Controller
             return redirect()->back()->withErrors(['error' => 'Document not found']);
         }
 
+        // Check company authorization
+        $user = auth()->user();
+        if ($document->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to document from another company.');
+        }
+
         Log::info('Document before update:', $document->toArray());
 
         $request->validate([
@@ -295,6 +309,12 @@ class DocumentsController extends Controller
     {
         $document = Document::where('deleted', false)->findOrFail($id);
         
+        // Check company authorization
+        $user = auth()->user();
+        if ($document->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to document from another company.');
+        }
+        
         // Soft delete: set deleted flag and update metadata
         $document->update([
             'deleted' => true,
@@ -312,6 +332,12 @@ class DocumentsController extends Controller
     {
         $document = Document::with(['category', 'subcategory'])->findOrFail($id);
         
+        // Check company authorization
+        $user = auth()->user();
+        if ($document->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to document from another company.');
+        }
+        
         // Get documents storage path from environment
         $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
         if ($document->template) {
@@ -320,6 +346,9 @@ class DocumentsController extends Controller
             // If it's a document, use documents storage path
             $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
         }
+        
+        // Replace company placeholder
+        $documentsPath = str_replace('{company}', $document->company->name, $documentsPath);
         
         if (!$documentsPath) {
             Log::error('Documents storage path not configured in environment');
@@ -349,6 +378,82 @@ class DocumentsController extends Controller
             'Content-Type' => 'image/png',
             'Cache-Control' => 'public, max-age=31536000', // Cache for 1 year
         ]);
+    }
+
+    /**
+     * Download the document file
+     */
+    public function download($id)
+    {
+        $document = Document::findOrFail($id);
+        
+        // Check company authorization
+        $user = request()->user();
+        if (!$user->hasPermissionTo('superadmin') && $document->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to document from another company.');
+        }
+
+        // Get documents storage path from environment
+        $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
+        if ($document->template) {
+            $documentsPath = env('CONTENTCONNECT_STORAGE_TEMPLATES');
+        } else {
+            // If it's a document, use documents storage path
+            $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
+        }
+        
+        // Replace company placeholder
+        $documentsPath = str_replace('{company}', $document->company->name, $documentsPath);
+        
+        if (!$documentsPath) {
+            Log::error('Documents storage path not configured in environment');
+            abort(404);
+        }
+        
+        // Construct document folder structure based on category and subcategory
+        $documentFolderPath = '';
+        if ($document->category) {
+            $documentFolderPath .= $document->category->name;
+            if ($document->subcategory) {
+                $documentFolderPath .= '/' . $document->subcategory->name;
+            }
+        }
+
+        // Find the actual file with extension
+        $baseFileName = $document->file_name;
+        $fullPath = $documentsPath . '/' . $documentFolderPath;
+        
+        // Determine file extensions based on template mode
+        if ($document->template) {
+            // For templates, look for .indd or .indt files
+            $possibleFiles = [
+                $fullPath . '/' . $baseFileName . '.indd',
+                $fullPath . '/' . $baseFileName . '.indt'
+            ];
+            $fileTypeDescription = '(indd|indt)';
+        } else {
+            // For documents, look for .pdf files
+            $possibleFiles = [
+                $fullPath . '/' . $baseFileName . '.pdf'
+            ];
+            $fileTypeDescription = '(pdf)';
+        }
+        
+        $filePath = null;
+        foreach ($possibleFiles as $possibleFile) {
+            if (file_exists($possibleFile)) {
+                $filePath = $possibleFile;
+                break;
+            }
+        }
+        
+        if (!$filePath) {
+            Log::error("Document file not found: {$fullPath}/{$baseFileName}.{$fileTypeDescription}");
+            abort(404, 'Document file not found.');
+        }
+        
+        // Return the file for download
+        return response()->download($filePath, basename($filePath));
     }
 }
 

@@ -2,14 +2,21 @@ import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
 import Pagination from "../../Shared/Pagination";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import CreateLanguageModal from "./CreateLanguageModal";
-import EditLanguageModal from "./EditLanguageModal";
+import CreateLanguageModal from "@/Pages/Languages/CreateLanguageModal";
+import EditLanguageModal from "@/Pages/Languages/EditLanguageModal";
+
+interface Company {
+  id: number;
+  name: string;
+}
 
 interface Language {
   id: number;
   name: string;
   code: string;
   active: boolean;
+  company_id: number;
+  company?: Company;
 }
 
 interface LanguagesData {
@@ -22,12 +29,20 @@ interface LanguagesData {
 interface ListLanguagesProps {
   languages: LanguagesData;
   filters?: { search?: string };
+  companies?: Company[];
 }
 
-export default function ListLanguages({ languages, filters = {} }: ListLanguagesProps) {
+export default function ListLanguages({ languages, filters = {}, companies = [] }: ListLanguagesProps) {
+  const page = usePage();
+  const permissions = page.props.auth?.permissions || [];
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingLanguage, setEditingLanguage] = useState<Language | null>(null);
   const [search, setSearch] = useState(filters.search || '');
+
+  // Helper function to check if user has permission
+  const hasPermission = (permission: string) => {
+    return permissions.includes(permission);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
       e.preventDefault();
@@ -56,12 +71,14 @@ export default function ListLanguages({ languages, filters = {} }: ListLanguages
       <div className="mx-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 my-6">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
-          >
-            Create Language
-          </button>
+          {hasPermission('language-create') && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+            >
+              Create Language
+            </button>
+          )}
           <form onSubmit={handleSearch} className="w-full sm:flex-1 max-w-md">
             <div className="relative">
               <input
@@ -91,6 +108,9 @@ export default function ListLanguages({ languages, filters = {} }: ListLanguages
                 <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
                 <th className="px-6 py-3 font-semibold">Code</th>
+                {hasPermission('superadmin') && (
+                  <th className="px-6 py-3 font-semibold">Company</th>
+                )}
                 <th className="px-6 py-3 font-semibold text-center">Active</th>
                 <th className="px-6 py-3 font-semibold text-center">Actions</th>
               </tr>
@@ -106,6 +126,13 @@ export default function ListLanguages({ languages, filters = {} }: ListLanguages
                         {language.code}
                       </span>
                     </td>
+                    {hasPermission('superadmin') && (
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {language.company?.name || 'N/A'}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => toggleActive(language.id, language.active)}
@@ -117,25 +144,29 @@ export default function ListLanguages({ languages, filters = {} }: ListLanguages
                     </td>
                     <td className="px-6 py-4 text-center">
                         <div className="flex justify-center gap-2">
-                            <button
-                            onClick={() => setEditingLanguage(language)}
-                            className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
-                            >
-                            Edit
-                            </button>
-                            <button
-                            onClick={() => handleDelete(language.id)}
-                            className="bg-red-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-red-600 transition"
-                            >
-                            Delete
-                            </button>
+                            {hasPermission('language-edit') && (
+                              <button
+                                onClick={() => setEditingLanguage(language)}
+                                className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {hasPermission('language-delete') && (
+                              <button
+                                onClick={() => handleDelete(language.id)}
+                                className="bg-red-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-red-600 transition"
+                              >
+                                Delete
+                              </button>
+                            )}
                         </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={hasPermission('superadmin') ? 6 : 5} className="px-6 py-4 text-center text-gray-500">
                     No languages found.
                   </td>
                 </tr>
@@ -155,11 +186,11 @@ export default function ListLanguages({ languages, filters = {} }: ListLanguages
         </div>
 
         {/* Modals */}
-        {showCreateModal && (
-          <CreateLanguageModal onClose={() => setShowCreateModal(false)} />
+        {showCreateModal && hasPermission('language-create') && (
+          <CreateLanguageModal companies={companies} onClose={() => setShowCreateModal(false)} />
         )}
-        {editingLanguage && (
-          <EditLanguageModal language={editingLanguage} onClose={() => setEditingLanguage(null)} />
+        {editingLanguage && hasPermission('language-edit') && (
+          <EditLanguageModal language={editingLanguage} companies={companies} onClose={() => setEditingLanguage(null)} />
         )}
       </div>
     </AuthenticatedLayout>

@@ -20,4 +20,14 @@ class SubCategory extends Model
     {
         return $this->hasMany(Document::class);
     }
+
+    /**
+     * Scope to filter subcategories by company through category relationship
+     */
+    public function scopeForCompany($query, $companyId)
+    {
+        return $query->whereHas('category', function($q) use ($companyId) {
+            $q->where('company_id', $companyId);
+        });
+    }
 }

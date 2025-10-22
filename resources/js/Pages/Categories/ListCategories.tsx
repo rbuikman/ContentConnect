@@ -5,9 +5,17 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import CreateCategoryModal from "./CreateCategoryModal";
 import EditCategoryModal from "./EditCategoryModal";
 
+interface Company {
+  id: number;
+  name: string;
+}
+
 interface Category {
   id: number;
   name: string;
+  active: boolean;
+  company_id: number;
+  company?: Company;
 }
 
 interface CategoriesData {
@@ -19,13 +27,21 @@ interface CategoriesData {
 
 interface ListCategoriesProps {
   categories: CategoriesData;
+  companies?: Company[];
   filters?: { search?: string };
 }
 
-export default function ListCategories({ categories, filters = {} }: ListCategoriesProps) {
+export default function ListCategories({ categories, companies = [], filters = {} }: ListCategoriesProps) {
+  const page = usePage();
+  const permissions = page.props.auth?.permissions || [];
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [search, setSearch] = useState(filters.search || '');
+
+  // Helper function to check if user has permission
+  const hasPermission = (permission: string) => {
+    return permissions.includes(permission);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
       e.preventDefault();
@@ -42,17 +58,26 @@ export default function ListCategories({ categories, filters = {} }: ListCategor
     }
   };
 
+  const toggleActive = (id: number, currentActive: boolean) => {
+    router.put(`/categories/${id}`, { active: !currentActive }, {
+      preserveState: true,
+      preserveScroll: true,
+    });
+  };
+
   return (
     <AuthenticatedLayout header="Category Management">
       <div className="mx-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 my-6">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
-          >
-            Create Category
-          </button>
+          {hasPermission('category-create') && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+            >
+              Create Category
+            </button>
+          )}
           <form onSubmit={handleSearch} className="w-full sm:flex-1 max-w-md">
             <div className="relative">
               <input
@@ -81,6 +106,10 @@ export default function ListCategories({ categories, filters = {} }: ListCategor
               <tr>
                 <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
+                {hasPermission('superadmin') && (
+                  <th className="px-6 py-3 font-semibold">Company</th>
+                )}
+                <th className="px-6 py-3 font-semibold text-center">Active</th>
                 <th className="px-6 py-3 font-semibold text-center">Actions</th>
               </tr>
             </thead>
@@ -90,27 +119,47 @@ export default function ListCategories({ categories, filters = {} }: ListCategor
                   <tr key={category.id} className="border-b hover:bg-gray-50 transition">
                     <td className="px-6 py-4">{category.id}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{category.name}</td>
+                    {hasPermission('superadmin') && (
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {category.company?.name || 'N/A'}
+                        </span>
+                      </td>
+                    )}
+                    <td className="px-6 py-4 text-center">
+                      <button
+                        onClick={() => toggleActive(category.id, category.active)}
+                        className={`text-lg ${category.active ? 'text-green-500 hover:text-green-700' : 'text-red-500 hover:text-red-700'} transition`}
+                        title={category.active ? 'Click to deactivate' : 'Click to activate'}
+                      >
+                        {category.active ? '✓' : '✗'}
+                      </button>
+                    </td>
                     <td className="px-6 py-4 text-center">
                         <div className="flex justify-center gap-2">
-                            <button
-                            onClick={() => setEditingCategory(category)}
-                            className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
-                            >
-                            Edit
-                            </button>
-                            <button
-                            onClick={() => handleDelete(category.id)}
-                            className="bg-red-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-red-600 transition"
-                            >
-                            Delete
-                            </button>
+                            {hasPermission('category-edit') && (
+                              <button
+                                onClick={() => setEditingCategory(category)}
+                                className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {hasPermission('category-delete') && (
+                              <button
+                                onClick={() => handleDelete(category.id)}
+                                className="bg-red-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-red-600 transition"
+                              >
+                                Delete
+                              </button>
+                            )}
                         </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={hasPermission('superadmin') ? 5 : 4} className="px-6 py-4 text-center text-gray-500">
                     No categories found.
                   </td>
                 </tr>
@@ -130,11 +179,11 @@ export default function ListCategories({ categories, filters = {} }: ListCategor
         </div>
 
         {/* Modals */}
-        {showCreateModal && (
-          <CreateCategoryModal onClose={() => setShowCreateModal(false)} />
+        {showCreateModal && hasPermission('category-create') && (
+          <CreateCategoryModal onClose={() => setShowCreateModal(false)} companies={companies} />
         )}
-        {editingCategory && (
-          <EditCategoryModal category={editingCategory} onClose={() => setEditingCategory(null)} />
+        {editingCategory && hasPermission('category-edit') && (
+          <EditCategoryModal category={editingCategory} onClose={() => setEditingCategory(null)} companies={companies} />
         )}
       </div>
     </AuthenticatedLayout>

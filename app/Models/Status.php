@@ -10,14 +10,27 @@ class Status extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'active'];
+    protected $fillable = [ 'company_id', 'name', 'active'];
 
     protected $casts = [
         'active' => 'boolean',
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function documents()
     {
         return $this->hasMany(Document::class);
+    }
+
+    /**
+     * Scope to filter statuses by company
+     */
+    public function scopeForCompany($query, $companyId)
+    {
+        return $query->where('company_id', $companyId);
     }
 }

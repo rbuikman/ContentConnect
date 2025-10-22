@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\SubCategory;
 use App\Models\Category;
@@ -13,12 +14,18 @@ class SubCategoriesController extends Controller
     {
         $query = SubCategory::query();
 
+        // Apply company scoping through category relationship
+        $user = auth()->user();
+        if (!$user->hasPermissionTo('superadmin')) {
+            $query->forCompany($user->company_id);
+        }
+
         // Voeg search toe
         if ($search = $request->input('search')) {
             $query->where('name', 'like', "%{$search}%");
         }
 
-        $subcategories = $query->paginate(0)->withQueryString();
+        $subcategories = $query->paginate(15)->withQueryString();
 
         return Inertia::render('SubCategories/ListSubCategories', [
             'subcategories' => $subcategories
@@ -43,11 +50,17 @@ class SubCategoriesController extends Controller
 
     public function edit($id)
     {
-        $subCategory = SubCategory::with('categories')->findOrFail($id);
+        $subCategory = SubCategory::with('category')->findOrFail($id);
+        
+        // Check company authorization through category
+        $user = auth()->user();
+        if (!$user->hasPermissionTo('superadmin') && $subCategory->category->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to subcategory from another company.');
+        }
 
         return Inertia::render('SubCategories/EditSubCategoryModal', [
             'subCategory' => $subCategory,
-            'categories' => Category::all()
+            'categories' => $user->hasPermissionTo('superadmin') ? Category::active()->get() : Category::forCompany($user->company_id)->active()->get()
         ]);
     }
 
@@ -58,6 +71,13 @@ class SubCategoriesController extends Controller
         ]);
 
         $subCategory = SubCategory::findOrFail($id);
+        
+        // Check authorization through category's company
+        $user = Auth::user();
+        if (!$user->hasPermissionTo('superadmin') && $subCategory->category->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized');
+        }
+        
         $subCategory->name = $validated['name'];
         $subCategory->save();
 
@@ -67,6 +87,13 @@ class SubCategoriesController extends Controller
     public function destroy($id)
     {
         $subCategory = SubCategory::findOrFail($id);
+        
+        // Check authorization through category's company
+        $user = Auth::user();
+        if (!$user->hasPermissionTo('superadmin') && $subCategory->category->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized');
+        }
+        
         $subCategory->delete();
 
         return redirect()->route('subcategories.index')->with('success', 'SubCategory deleted successfully');

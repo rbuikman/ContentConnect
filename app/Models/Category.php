@@ -9,7 +9,11 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'company_id', 'active'];
+
+    protected $casts = [
+        'active' => 'boolean',
+    ];
 
     public function subcategories()
     {
@@ -19,5 +23,29 @@ class Category extends Model
     public function documents()
     {
         return $this->hasMany(Document::class);
+    }
+
+    /**
+     * Get the company that owns the category.
+     */
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Scope to filter categories by company
+     */
+    public function scopeForCompany($query, $companyId)
+    {
+        return $query->where('company_id', $companyId);
+    }
+
+    /**
+     * Scope to filter active categories
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
     }
 }

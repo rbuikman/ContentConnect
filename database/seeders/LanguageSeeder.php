@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Language;
+use App\Models\Company;
 use Illuminate\Database\Seeder;
 
 class LanguageSeeder extends Seeder
@@ -12,36 +13,38 @@ class LanguageSeeder extends Seeder
      */
     public function run(): void
     {
+        // Get the first company to assign languages to
+        $firstCompany = Company::first();
+        
+        if (!$firstCompany) {
+            $this->command->error('No companies found. Please run CompanySeeder first.');
+            return;
+        }
+
         $languages = [
-            ['name' => 'English', 'code' => 'EN'],
-            ['name' => 'Dutch', 'code' => 'NL'],
-            ['name' => 'French', 'code' => 'FR'],
-            ['name' => 'German', 'code' => 'DE'],
-            ['name' => 'Spanish', 'code' => 'ES'],
-            ['name' => 'Italian', 'code' => 'IT'],
-            ['name' => 'Portuguese', 'code' => 'PT'],
-            ['name' => 'Russian', 'code' => 'RU'],
-            ['name' => 'Chinese (Simplified)', 'code' => 'CN'],
-            ['name' => 'Japanese', 'code' => 'JP'],
-            ['name' => 'Korean', 'code' => 'KR'],
-            ['name' => 'Arabic', 'code' => 'AR'],
-            ['name' => 'Hindi', 'code' => 'HI'],
-            ['name' => 'Turkish', 'code' => 'TR'],
-            ['name' => 'Polish', 'code' => 'PL'],
-            ['name' => 'Swedish', 'code' => 'SV'],
-            ['name' => 'Norwegian', 'code' => 'NO'],
-            ['name' => 'Danish', 'code' => 'DA'],
-            ['name' => 'Finnish', 'code' => 'FI'],
-            ['name' => 'Czech', 'code' => 'CS'],
+            ['name' => 'English', 'code' => 'EN', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Dutch', 'code' => 'NL', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'French', 'code' => 'FR', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'German', 'code' => 'DE', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Spanish', 'code' => 'ES', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Italian', 'code' => 'IT', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Portuguese', 'code' => 'PT', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Turkish', 'code' => 'TR', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Polish', 'code' => 'PL', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Swedish', 'code' => 'SV', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Norwegian', 'code' => 'NO', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Danish', 'code' => 'DA', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Finnish', 'code' => 'FI', 'active' => true, 'company_id' => $firstCompany->id],
+            ['name' => 'Czech', 'code' => 'CS', 'active' => true, 'company_id' => $firstCompany->id],
         ];
 
-        foreach ($languages as $language) {
-            Language::updateOrCreate(
-                ['code' => $language['code']],
-                ['name' => $language['name']]
+        foreach ($languages as $languageData) {
+            Language::firstOrCreate(
+                ['code' => $languageData['code'], 'company_id' => $languageData['company_id']], 
+                $languageData
             );
         }
 
-        $this->command->info('Languages seeded successfully. Total languages: ' . Language::count());
+        $this->command->info('Language seeder completed. Created ' . count($languages) . ' languages for company: ' . $firstCompany->name);
     }
 }

@@ -2,31 +2,52 @@
 import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
 
+interface Company {
+  id: number;
+  name: string;
+}
+
 interface Category {
   id: number;
   name: string;
+  active: boolean;
+  company_id: number;
 }
 
 interface EditCategoryProps {
   category: Category;
   onClose: () => void;
+  companies?: Company[];
 }
 
 interface FormDataShape {
   name: string;
+  active: boolean;
+  company_id?: number;
 }
 
-export default function EditCategoryModal({ category, onClose }: EditCategoryProps) {
+export default function EditCategoryModal({ category, onClose, companies = [] }: EditCategoryProps) {
   const { errors } = usePage().props as any;
+  const page = usePage();
+  const permissions = page.props.auth?.permissions || [];
+
+  // Helper function to check if user has permission
+  const hasPermission = (permission: string) => {
+    return permissions.includes(permission);
+  };
 
   const [form, setForm] = useState<FormDataShape>({
     name: category.name,
+    active: category.active,
+    company_id: category.company_id,
   });
 
   // Update form if category changes
   useEffect(() => {
     setForm({
       name: category.name,
+      active: category.active,
+      company_id: category.company_id,
     });
   }, [category]);
 
@@ -77,6 +98,43 @@ export default function EditCategoryModal({ category, onClose }: EditCategoryPro
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
             {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
+          </div>
+          
+          {/* Company Selection - Only visible to SuperAdmin users */}
+          {hasPermission('superadmin') && companies.length > 0 && (
+            <div className="mb-4">
+              <label htmlFor="company_id" className="block text-sm font-medium text-gray-700">
+                Company
+              </label>
+              <select
+                id="company_id"
+                name="company_id"
+                value={form.company_id || ''}
+                onChange={(e) => setForm({ ...form, company_id: Number(e.target.value) })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                required
+              >
+                <option value="">Select a company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+              {errors.company_id && <div className="text-red-500 text-sm mt-1">{errors.company_id}</div>}
+            </div>
+          )}
+          
+          <div className="mb-4">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+              <span className="ml-2 text-sm font-medium text-gray-700">Active</span>
+            </label>
           </div>
           <div className="flex justify-end">
             <button

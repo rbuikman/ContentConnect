@@ -50,6 +50,12 @@
   font-size: 0.8rem !important;
 }
 
+.compact-table .p-dropdown .p-dropdown-clear-icon {
+  font-size: 0.7rem !important;
+  width: 0.7rem !important;
+  height: 0.7rem !important;
+}
+
 .compact-row {
   height: 2.5rem !important;
 }

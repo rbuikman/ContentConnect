@@ -10,10 +10,17 @@ interface Role {
   name: string;
 }
 
+interface Company {
+  id: number;
+  name: string;
+}
+
 interface AppUser {
   id: number;
   name: string;
   email: string;
+  company_id?: number;
+  company?: Company;
   roles: Role[];
 }
 
@@ -27,13 +34,47 @@ interface UsersData {
 interface ListUsersProps {
   users: UsersData;
   roles: Role[];
+  companies?: Company[];
   filters?: { search?: string }; // optionele search query
 }
 
-export default function ListUsers({ users, roles, filters = {} }: ListUsersProps) {
+export default function ListUsers({ users, roles, companies = [], filters = {} }: ListUsersProps) {
+  const page = usePage();
+  const permissions = page.props.auth?.permissions || [];
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [search, setSearch] = useState(filters.search || '');
+
+  // Helper function to check if user has permission
+  const hasPermission = (permission: string) => {
+    return permissions.includes(permission);
+  };
+
+  // Filter users: non-SuperAdmin users should not see SuperAdmin users
+  const filteredUsers = React.useMemo(() => {
+    const isSuperAdmin = hasPermission('superadmin');
+    
+    if (isSuperAdmin) {
+      return users;
+    }
+    
+    // Filter out users with SuperAdmin role if current user doesn't have superadmin permission
+    return {
+      ...users,
+      data: users.data.filter(user => 
+        !user.roles.some(role => role.name === 'SuperAdmin')
+      )
+    };
+  }, [users, permissions]);
+
+  // Helper function to check if user can be edited/deleted
+  const canModifyUser = (user: AppUser) => {
+    const isSuperAdmin = hasPermission('superadmin');
+    const userIsSuperAdmin = user.roles.some(role => role.name === 'SuperAdmin');
+    
+    // SuperAdmin can modify anyone, non-SuperAdmin cannot modify SuperAdmin users
+    return isSuperAdmin || !userIsSuperAdmin;
+  };
 
   const handleSearch = (e: React.FormEvent) => {
       e.preventDefault();
@@ -54,12 +95,14 @@ export default function ListUsers({ users, roles, filters = {} }: ListUsersProps
       <div className="mx-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 my-6">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
-          >
-            Create User
-          </button>
+          {hasPermission('user-create') && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+            >
+              Create User
+            </button>
+          )}
           <form onSubmit={handleSearch} className="w-full sm:flex-1 max-w-md">
             <div className="relative">
               <input
@@ -91,41 +134,55 @@ export default function ListUsers({ users, roles, filters = {} }: ListUsersProps
                 <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
                 <th className="px-6 py-3 font-semibold">Email</th>
+                <th className="px-6 py-3 font-semibold">Company</th>
                 <th className="px-6 py-3 font-semibold">Roles</th>
                 <th className="px-6 py-3 font-semibold text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.data.length > 0 ? (
-                users.data.map((user) => (
+              {filteredUsers.data.length > 0 ? (
+                filteredUsers.data.map((user) => (
                   <tr key={user.id} className="border-b hover:bg-gray-50 transition">
                     <td className="px-6 py-4">{user.id}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{user.name}</td>
                     <td className="px-6 py-4">{user.email}</td>
                     <td className="px-6 py-4">
+                      {user.company ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {user.company.name}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 italic">No company</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
                       {user.roles.map((role) => role.name).join(", ")}
                     </td>
                     <td className="px-6 py-4 text-center">
                         <div className="flex justify-center gap-2">
-                            <button
-                            onClick={() => setEditingUser(user)}
-                            className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
-                            >
-                            Edit
-                            </button>
-                            <button
-                            onClick={() => handleDelete(user.id)}
-                            className="bg-red-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-red-600 transition"
-                            >
-                            Delete
-                            </button>
+                            {hasPermission('user-edit') && canModifyUser(user) && (
+                              <button
+                                onClick={() => setEditingUser(user)}
+                                className="bg-green-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-green-600 transition"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {hasPermission('user-delete') && canModifyUser(user) && (
+                              <button
+                                onClick={() => handleDelete(user.id)}
+                                className="bg-red-500 text-white rounded-md px-3 py-1 text-xs font-medium hover:bg-red-600 transition"
+                              >
+                                Delete
+                              </button>
+                            )}
                         </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                     No users found.
                   </td>
                 </tr>
@@ -137,19 +194,19 @@ export default function ListUsers({ users, roles, filters = {} }: ListUsersProps
         {/* Pagination */}
         <div className="my-10">
           <Pagination
-            current_page={users.current_page}
-            total={users.total}
-            per_page={users.per_page}
+            current_page={filteredUsers.current_page}
+            total={filteredUsers.total}
+            per_page={filteredUsers.per_page}
             onPaginate={handlePaginate}
           />
         </div>
 
         {/* Modals */}
-        {showCreateModal && (
-          <CreateUserModal roles={roles} onClose={() => setShowCreateModal(false)} />
+        {showCreateModal && hasPermission('user-create') && (
+          <CreateUserModal roles={roles} companies={companies} onClose={() => setShowCreateModal(false)} />
         )}
-        {editingUser && (
-          <EditUserModal user={editingUser} roles={roles} onClose={() => setEditingUser(null)} />
+        {editingUser && hasPermission('user-edit') && (
+          <EditUserModal user={editingUser} roles={roles} companies={companies} onClose={() => setEditingUser(null)} />
         )}
       </div>
     </AuthenticatedLayout>

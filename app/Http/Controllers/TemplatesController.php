@@ -15,9 +15,12 @@ class TemplatesController extends Controller
 {
     public function index(Request $request)
     {
+        // Get user first
+        $user = auth()->user();
+        
         // First, automatically update templates from storage
         try {
-            $this->syncTemplatesFromStorage();
+            $this->syncTemplatesFromStorage($user->company->name);
         } catch (\Exception $e) {
             Log::error('Error syncing templates from storage during index: ' . $e->getMessage());
             // Continue with loading the page even if sync fails
@@ -27,8 +30,12 @@ class TemplatesController extends Controller
 
         $documents = Document::with(['category', 'subcategory', 'status', 'languages', 'contents']) // Added 'contents' relationship
             ->where('template', true) // Filter for templates only
-            ->where('deleted', false) // Filter out deleted records
-            ->when($query, function($q) use ($query) {
+            ->where('deleted', false); // Filter out deleted records
+
+        // Apply company scoping - always filter by user's company
+        $documents->forCompany($user->company_id);
+
+        $documents = $documents->when($query, function($q) use ($query) {
                 $q->where('order_number', 'like', "%{$query}%")
                 ->orWhere('file_name', 'like', "%{$query}%");
             })
@@ -40,15 +47,15 @@ class TemplatesController extends Controller
             'documents' => $documents ?? [
                 'data' => []
             ],
-            'categories' => Category::all(),
-            'subcategories' => SubCategory::all(),
-            'statuses' => Status::where('active', true)->get(), // Add only active statuses to props
-            'languages' => Language::where('active', true)->get(), // Add only active languages to props
-            'contents' => \App\Models\Content::where('active', true)->get(['id', 'name', 'excel_file_path', 'is_network_path']), // Add only active contents for selection
-            'templates' => Document::where('template', true)->where('deleted', false)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']), // Add templates for selection with relationships
+            'categories' => Category::forCompany($user->company_id)->active()->get(),
+            'subcategories' => SubCategory::forCompany($user->company_id)->get(),
+            'statuses' => Status::where('active', true)->forCompany($user->company_id)->get(),
+            'languages' => Language::where('active', true)->forCompany($user->company_id)->get(),
+            'contents' => \App\Models\Content::where('active', true)->forCompany($user->company_id)->get(['id', 'name', 'excel_file_path', 'is_network_path']),
+            'templates' => Document::where('template', true)->where('deleted', false)->forCompany($user->company_id)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']),
             'template' => true, // Pass template parameter for templates
             'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
-            'webeditorDocumentPath' => config('app.webeditor_template_path'), // Add template path from config
+            'webeditorDocumentPath' => str_replace('{company}', $user->company->name, config('app.webeditor_template_path')), // Add template path from config
         ]);
     }
 
@@ -70,8 +77,14 @@ class TemplatesController extends Controller
         ]);
  
         $document = Document::create([
-            ...$request->all(),
+            'order_number' => $request->order_number,
+            'file_name' => $request->file_name,
+            'note' => $request->note,
+            'category_id' => $request->category_id,
+            'sub_category_id' => $request->sub_category_id,
+            'status_id' => $request->status_id,
             'template' => true, // Always set template to true for templates
+            'company_id' => auth()->user()->company_id,
             'created_by' => auth()->user()->name,
             'created_at' => now(),
             'modified_by' => auth()->user()->name,
@@ -102,6 +115,12 @@ class TemplatesController extends Controller
 
         if (!$document) {
             return redirect()->back()->withErrors(['error' => 'Template not found']);
+        }
+
+        // Check company authorization
+        $user = auth()->user();
+        if ($document->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to template from another company.');
         }
 
         Log::info('Template before update:', $document->toArray());
@@ -150,6 +169,12 @@ class TemplatesController extends Controller
     {
         $document = Document::where('deleted', false)->findOrFail($id);
         
+        // Check company authorization
+        $user = auth()->user();
+        if ($document->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to template from another company.');
+        }
+        
         // Soft delete: set deleted flag and update metadata
         $document->update([
             'deleted' => true,
@@ -163,7 +188,8 @@ class TemplatesController extends Controller
     public function readTemplatesFromStorage(Request $request)
     {
         try {
-            $result = $this->syncTemplatesFromStorage();
+            $user = auth()->user();
+            $result = $this->syncTemplatesFromStorage($user->company->name);
             
             $message = "Templates updated. Created: {$result['created']}, Skipped: {$result['skipped']}, Deleted: {$result['deleted']}";
             Log::info($message);
@@ -177,13 +203,17 @@ class TemplatesController extends Controller
     }
 
     /**
-     * Sync templates from storage directory to database
-     * @return array Returns array with 'created', 'skipped', and 'deleted' counts
+     * Automatically update templates by scanning the storage folder
+     * Only processes templates in Category/Subcategory folder structure
+     * 
+     * @param string $companyName The company name to replace in the path
+     * @return array
      * @throws \Exception
      */
-    private function syncTemplatesFromStorage(): array
+    private function syncTemplatesFromStorage(string $companyName): array
     {
         $templateFolder = env('CONTENTCONNECT_STORAGE_TEMPLATES');
+        $templateFolder = str_replace('{company}', $companyName, $templateFolder);
         
         if (!$templateFolder || !is_dir($templateFolder)) {
             throw new \Exception('Template folder not found or not configured properly.');
@@ -195,152 +225,25 @@ class TemplatesController extends Controller
         
         // Track all existing files in storage (with their full path structure)
         $existingFiles = [];
+        $defaultCompanyId = auth()->user() ? auth()->user()->company_id : \App\Models\Company::first()->id;
 
-        // Create or get default category and subcategory
-        $defaultCategory = Category::firstOrCreate(['name' => 'default']);
-        $defaultSubcategory = SubCategory::firstOrCreate([
-            'name' => 'default',
-            'category_id' => $defaultCategory->id
-        ]);
-
-        // First, check for files directly in the root template folder
-        $rootFiles = glob($templateFolder . '/*');
-        $rootFiles = array_filter($rootFiles, 'is_file'); // Only files, not directories
-        
-        // Filter to only include .indd and .indt files
-        $rootFiles = array_filter($rootFiles, function($file) {
-            $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-            return in_array($extension, ['indd', 'indt']);
-        });
-
-        // Process root files with default category/subcategory
-        foreach ($rootFiles as $rootFile) {
-            $fileName = pathinfo(basename($rootFile), PATHINFO_FILENAME);
-            
-            // Track this file as existing in storage
-            $existingFiles[] = [
-                'file_name' => $fileName,
-                'category_id' => $defaultCategory->id,
-                'sub_category_id' => $defaultSubcategory->id
-            ];
-            
-            // Check if template already exists
-            $existingTemplate = Document::where('file_name', $fileName)
-                ->where('category_id', $defaultCategory->id)
-                ->where('sub_category_id', $defaultSubcategory->id)
-                ->where('template', true)
-                ->where('deleted', false)
-                ->first();
-
-            if ($existingTemplate) {
-                $skippedCount++;
-                Log::info("Skipped existing template: {$fileName}");
-                continue;
-            }
-
-            // Get default status
-            $defaultStatus = Status::first();
-            if (!$defaultStatus) {
-                Log::error("No status found in database");
-                continue;
-            }
-
-            // Create new template document with default category/subcategory
-            Document::create([
-                'order_number' => '',
-                'file_name' => $fileName,
-                'note' => "",
-                'category_id' => $defaultCategory->id,
-                'sub_category_id' => $defaultSubcategory->id,
-                'status_id' => $defaultStatus->id,
-                'template' => true,
-                'created_by' => auth()->user() ? auth()->user()->name : 'system',
-                'created_at' => now(),
-                'modified_by' => auth()->user() ? auth()->user()->name : 'system',
-                'modified_at' => now(),
-            ]);
-
-            $createdCount++;
-            Log::info("Created template with default category: {$fileName}");
-        }
-
-        // Get all subdirectories (categories)
+        // Get all subdirectories (categories) - skip root files and category-only files
         $categoryDirs = glob($templateFolder . '/*', GLOB_ONLYDIR);
 
         foreach ($categoryDirs as $categoryDir) {
             $categoryName = basename($categoryDir);
             
-            // Create or get category
-            $category = Category::firstOrCreate(['name' => $categoryName]);
-            Log::info("Processing category: {$categoryName}");
-
-            // Check for files directly in category folder (no subcategory)
-            $categoryFiles = glob($categoryDir . '/*');
-            $categoryFiles = array_filter($categoryFiles, 'is_file');
-            
-            // Filter to only include .indd and .indt files
-            $categoryFiles = array_filter($categoryFiles, function($file) {
-                $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                return in_array($extension, ['indd', 'indt']);
-            });
-
-            // Process files in category folder with default subcategory
-            foreach ($categoryFiles as $categoryFile) {
-                $fileName = pathinfo(basename($categoryFile), PATHINFO_FILENAME);
-
+            // Skip if category doesn't exist in database
+            $category = Category::where('name', $categoryName)
+                ->where('company_id', $defaultCompanyId)
+                ->first();
                 
-                // Use default subcategory for this category
-                $categoryDefaultSubcategory = SubCategory::firstOrCreate([
-                    'name' => 'default',
-                    'category_id' => $category->id
-                ]);
-                
-                // Track this file as existing in storage
-                $existingFiles[] = [
-                    'file_name' => $fileName,
-                    'category_id' => $category->id,
-                    'sub_category_id' => $categoryDefaultSubcategory->id
-                ];
-                
-                // Check if template already exists
-                $existingTemplate = Document::where('file_name', $fileName)
-                    ->where('category_id', $category->id)
-                    ->where('sub_category_id', $categoryDefaultSubcategory->id)
-                    ->where('template', true)
-                    ->where('deleted', false)
-                    ->first();
-
-                if ($existingTemplate) {
-                    $skippedCount++;
-                    Log::info("Skipped existing template: {$fileName}");
-                    continue;
-                }
-
-                // Get default status
-                $defaultStatus = Status::first();
-                if (!$defaultStatus) {
-                    Log::error("No status found in database");
-                    continue;
-                }
-
-                // Create new template document with default subcategory
-                Document::create([
-                    'order_number' => '',
-                    'file_name' => $fileName,
-                    'note' => "",
-                    'category_id' => $category->id,
-                    'sub_category_id' => $categoryDefaultSubcategory->id,
-                    'status_id' => $defaultStatus->id,
-                    'template' => true,
-                    'created_by' => auth()->user() ? auth()->user()->name : 'system',
-                    'created_at' => now(),
-                    'modified_by' => auth()->user() ? auth()->user()->name : 'system',
-                    'modified_at' => now(),
-                ]);
-
-                $createdCount++;
-                Log::info("Created template with default subcategory: {$fileName}");
+            if (!$category) {
+                Log::info("Skipping category folder '{$categoryName}' - no matching category found in database");
+                continue;
             }
+            
+            Log::info("Processing category: {$categoryName}");
 
             // Get all subdirectories within category (subcategories)
             $subcategoryDirs = glob($categoryDir . '/*', GLOB_ONLYDIR);
@@ -348,11 +251,16 @@ class TemplatesController extends Controller
             foreach ($subcategoryDirs as $subcategoryDir) {
                 $subcategoryName = basename($subcategoryDir);
                 
-                // Create or get subcategory
-                $subcategory = SubCategory::firstOrCreate([
-                    'name' => $subcategoryName,
-                    'category_id' => $category->id
-                ]);
+                // Skip if subcategory doesn't exist in database
+                $subcategory = SubCategory::where('name', $subcategoryName)
+                    ->where('category_id', $category->id)
+                    ->first();
+                    
+                if (!$subcategory) {
+                    Log::info("Skipping subcategory folder '{$subcategoryName}' - no matching subcategory found in database");
+                    continue;
+                }
+                
                 Log::info("Processing subcategory: {$subcategoryName}");
 
                 // Get all files in subcategory directory
@@ -389,10 +297,10 @@ class TemplatesController extends Controller
                         continue;
                     }
 
-                    // Get default status (assuming there's a default status)
-                    $defaultStatus = Status::first();
+                    // Get default status
+                    $defaultStatus = Status::where('company_id', $defaultCompanyId)->first();
                     if (!$defaultStatus) {
-                        Log::error("No status found in database");
+                        Log::error("No status found in database for company {$defaultCompanyId}");
                         continue;
                     }
 
@@ -405,6 +313,7 @@ class TemplatesController extends Controller
                         'sub_category_id' => $subcategory->id,
                         'status_id' => $defaultStatus->id,
                         'template' => true,
+                        'company_id' => $defaultCompanyId,
                         'created_by' => auth()->user() ? auth()->user()->name : 'system',
                         'created_at' => now(),
                         'modified_by' => auth()->user() ? auth()->user()->name : 'system',
@@ -412,7 +321,7 @@ class TemplatesController extends Controller
                     ]);
 
                     $createdCount++;
-                    Log::info("Created template: {$fileName}");
+                    Log::info("Created template: {$fileName} in {$categoryName}/{$subcategoryName}");
                 }
             }
         }

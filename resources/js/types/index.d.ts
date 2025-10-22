@@ -5,6 +5,12 @@ export interface User {
     name: string;
     email: string;
     email_verified_at?: string;
+    company_id: number;
+    company?: {
+        id: number;
+        name: string;
+        numberoflicences: number;
+    };
 }
 
 export type PageProps<
@@ -12,6 +18,7 @@ export type PageProps<
 > = T & {
     auth: {
         user: User;
+        permissions: string[];
     };
     ziggy: Config & { location: string };
 };

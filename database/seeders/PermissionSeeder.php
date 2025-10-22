@@ -23,14 +23,43 @@ class PermissionSeeder extends Seeder
             'user-create',
             'user-edit',
             'user-delete',
-            'documents-index',
-            'documents-create',
-            'documents-edit',
-            'documents-delete',
+            'document-index',
+            'document-create',
+            'document-edit',
+            'document-delete',
+            'templates-index',
+            'templates-create',
+            'templates-edit',
+            'templates-delete',
+            'content-index',
+            'content-create',
+            'content-edit',
+            'content-delete',
+            'status-index',
+            'status-create',
+            'status-edit',
+            'status-delete',
+            'language-index',
+            'language-create',
+            'language-edit',
+            'language-delete',
+            'company-index',
+            'company-create',
+            'company-edit',
+            'company-delete',
+            'superadmin',
+            'category-index',
+            'category-create',
+            'category-edit',
+            'category-delete',
+            'subcategory-index',
+            'subcategory-create',
+            'subcategory-edit',
+            'subcategory-delete',
          ];
     
          foreach ($permissions as $permission) {
-              Permission::create(['name' => $permission]);
+              Permission::firstOrCreate(['name' => $permission]);
          }
     }
 }

@@ -155,13 +155,7 @@ const CreateContentModal: React.FC<CreateContentModalProps> = ({ onClose }) => {
                             uploadHandler={onFileSelect}
                             onRemove={onFileRemove}
                             onClear={onFileRemove}
-                            emptyTemplate={
-                                <div className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-lg">
-                                    <i className="pi pi-cloud-upload text-2xl text-gray-400 mb-2"></i>
-                                    <p className="text-sm text-gray-500">Drag and drop Excel file here, or click to select</p>
-                                    <p className="text-xs text-gray-400">Maximum file size: 10MB</p>
-                                </div>
-                            }
+                            auto
                             chooseLabel="Choose Excel File"
                             uploadLabel=""
                             cancelLabel=""

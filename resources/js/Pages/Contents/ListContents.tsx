@@ -13,8 +13,8 @@ import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { router, usePage } from "@inertiajs/react";
-import CreateContentModal from "./CreateContentModal";
-import EditContentModal from "./EditContentModal";
+import CreateContentModal from "@/Pages/Contents/CreateContentModal";
+import EditContentModal from "@/Pages/Contents/EditContentModal";
 
 interface Content {
   id: number;
@@ -54,6 +54,8 @@ const defaultFilters: DataTableFilterMeta = {
 
 const ListContents: React.FC<ListContentsProps> = ({ contents }) => {
     const { flash, errors } = usePage().props as any;
+    const page = usePage();
+    const permissions = page.props.auth?.permissions || [];
     const [loading, setLoading] = useState<boolean>(true);
     const [globalFilterValue, setGlobalFilterValue] = useState<string>('');
     const [filters, setFilters] = useState<DataTableFilterMeta>(defaultFilters);
@@ -62,6 +64,11 @@ const ListContents: React.FC<ListContentsProps> = ({ contents }) => {
     const [editingContent, setEditingContent] = useState<Content | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const toast = useRef<Toast>(null);
+
+    // Helper function to check if user has permission
+    const hasPermission = (permission: string) => {
+        return permissions.includes(permission);
+    };
 
     useEffect(() => {
         setLoading(false);
@@ -126,12 +133,14 @@ const ListContents: React.FC<ListContentsProps> = ({ contents }) => {
     const renderHeader = () => {
         return (
             <div className="flex justify-between items-center">
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
-                >
-                    Create Content
-                </button>
+                {hasPermission('content-create') && (
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+                    >
+                        Create Content
+                    </button>
+                )}
                 <IconField iconPosition="right" className="w-64">
                     <InputIcon className="pi pi-search" />
                     <InputText 
@@ -254,30 +263,34 @@ const ListContents: React.FC<ListContentsProps> = ({ contents }) => {
     const actionsBodyTemplate = (rowData: Content) => {
         return (
             <div className="flex gap-1 justify-center">
-                <Button
-                    icon="pi pi-pencil"
-                    className="p-button-rounded p-button-outlined"
-                    onClick={() => {
-                        setEditingContent(rowData);
-                        setShowEditModal(true);
-                    }}
-                    tooltipOptions={{ position: "top" }}
-                    severity="success"
-                />
-                <Button
-                    icon="pi pi-trash"
-                    className="p-button-rounded p-button-outlined"
-                    tooltipOptions={{ position: "top" }}
-                    severity="danger"
-                    onClick={() =>
-                        confirmDialog({
-                            message: "Are you sure you want to delete this content?",
-                            header: "Confirmation",
-                            icon: "pi pi-exclamation-triangle",
-                            accept: () => handleDelete(rowData.id),
-                        })
-                    }
-                />
+                {hasPermission('content-edit') && (
+                    <Button
+                        icon="pi pi-pencil"
+                        className="p-button-rounded p-button-outlined"
+                        onClick={() => {
+                            setEditingContent(rowData);
+                            setShowEditModal(true);
+                        }}
+                        tooltipOptions={{ position: "top" }}
+                        severity="success"
+                    />
+                )}
+                {hasPermission('content-delete') && (
+                    <Button
+                        icon="pi pi-trash"
+                        className="p-button-rounded p-button-outlined"
+                        tooltipOptions={{ position: "top" }}
+                        severity="danger"
+                        onClick={() =>
+                            confirmDialog({
+                                message: "Are you sure you want to delete this content?",
+                                header: "Confirmation",
+                                icon: "pi pi-exclamation-triangle",
+                                accept: () => handleDelete(rowData.id),
+                            })
+                        }
+                    />
+                )}
             </div>
         );
     };
@@ -299,13 +312,13 @@ const ListContents: React.FC<ListContentsProps> = ({ contents }) => {
         <AuthenticatedLayout header="Content Management">
             <ConfirmDialog />
 
-            {showCreateModal && (
+            {showCreateModal && hasPermission('content-create') && (
                 <CreateContentModal
                     onClose={() => setShowCreateModal(false)}
                 />
             )}
 
-            {showEditModal && editingContent && (
+            {showEditModal && editingContent && hasPermission('content-edit') && (
                 <EditContentModal
                     content={editingContent}
                     onClose={() => {

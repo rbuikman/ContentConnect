@@ -7,8 +7,14 @@ interface Role {
   name: string;
 }
 
+interface Company {
+  id: number;
+  name: string;
+}
+
 interface CreateUserProps {
   roles?: Role[];
+  companies?: Company[];
   onClose: () => void;
 }
 
@@ -17,11 +23,40 @@ interface FormDataShape {
   email: string;
   password: string;
   password_confirmation: string;
+  company_id: number | null;
   roles: number[];
 }
 
-export default function CreateUserModal({ roles = [], onClose }: CreateUserProps) {
+export default function CreateUserModal({ roles = [], companies = [], onClose }: CreateUserProps) {
   const { errors } = usePage().props as any;
+  const page = usePage();
+  const userPermissions = page.props.auth?.permissions || [];
+  const currentUser = page.props.auth?.user;
+
+  // Filter companies based on user permissions
+  const filteredCompanies = React.useMemo(() => {
+    const canManageCompanies = userPermissions.includes('company-index');
+    return canManageCompanies ? companies : [];
+  }, [companies, userPermissions]);
+
+  // Determine initial company_id based on user permissions
+  const initialCompanyId = React.useMemo(() => {
+    const isSuperAdmin = userPermissions.includes('superadmin');
+    // If not SuperAdmin, auto-assign current user's company
+    return isSuperAdmin ? null : (currentUser?.company_id || null);
+  }, [userPermissions, currentUser]);
+
+  // Filter roles based on user permissions
+  const filteredRoles = React.useMemo(() => {
+    const canManageCompanyPermissions = userPermissions.includes('superadmin');
+    
+    if (canManageCompanyPermissions) {
+      return roles;
+    }
+    
+    // Filter out SuperAdmin role if user doesn't have superadmin permission
+    return roles.filter(role => role.name !== 'SuperAdmin');
+  }, [roles, userPermissions]);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -40,11 +75,16 @@ export default function CreateUserModal({ roles = [], onClose }: CreateUserProps
     email: "",
     password: "",
     password_confirmation: "",
+    company_id: initialCompanyId,
     roles: [],
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm(prev => ({ ...prev, company_id: e.target.value ? Number(e.target.value) : null }));
   };
 
   const handleSelectRole = (roleId: number) => {
@@ -151,12 +191,43 @@ export default function CreateUserModal({ roles = [], onClose }: CreateUserProps
             )}
           </div>
 
+          {/* Company */}
+          {filteredCompanies.length > 0 ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+              <select
+                value={form.company_id || ""}
+                onChange={handleCompanyChange}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">Select a company</option>
+                {filteredCompanies.map(company => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+              {errors?.company_id && <p className="text-red-600 text-sm mt-1">{errors.company_id}</p>}
+            </div>
+          ) : (
+            // Show company info when auto-assigned for non-SuperAdmin users
+            initialCompanyId && currentUser?.company && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                <div className="mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
+                  <span className="text-gray-700">{currentUser.company.name}</span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">New user will be assigned to your company.</p>
+              </div>
+            )
+          )}
+
           {/* Roles */}
           <div>
             <h4 className="text-sm font-medium text-gray-700 mb-2">Roles</h4>
             <div className="flex flex-wrap gap-2">
-              {roles.length > 0 ? (
-                roles.map(role => (
+              {filteredRoles.length > 0 ? (
+                filteredRoles.map(role => (
                   <label key={role.id} className="flex items-center space-x-2">
                     <input
                       type="checkbox"

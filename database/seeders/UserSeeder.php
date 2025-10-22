@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\Company;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
@@ -16,18 +17,28 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-        $user = User::create([
-        	'name' => 'Rene Buikman', 
-        	'email' => 'rene@valke.net',
-        	'password' => bcrypt('abcdefgh')
-        ]);
-
-        $permissions = Permission::pluck('id','id')->all();
+        // Get the default company (Valke.net)
+        $company = Company::where('name', 'Valke.net')->first();
         
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        // If no company exists, create it
+        if (!$company) {
+            $company = Company::create([
+                'name' => 'Valke.net',
+                'numberoflicences' => 100
+            ]);
+        }
 
-        $adminRole->syncPermissions($permissions);
-
-        $user->assignRole([$adminRole->id]);
+        $user = User::firstOrCreate(
+            ['email' => 'rene@valke.net'],
+            [
+                'name' => 'Rene Buikman', 
+                'password' => bcrypt('abcdefgh'),
+                'company_id' => $company->id,
+            ]
+        );
+        
+        // Assign SuperAdmin role to the main user
+        $superAdminRole = Role::firstOrCreate(['name' => 'SuperAdmin']);
+        $user->assignRole($superAdminRole);
     }
 }
