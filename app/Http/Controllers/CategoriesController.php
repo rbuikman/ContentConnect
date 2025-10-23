@@ -61,9 +61,10 @@ class CategoriesController extends Controller
             $rules['name'] = 'required|min:3|unique:categories,name,NULL,id,company_id,' . $companyId;
         }
 
-        $validated = $request->validate($rules);
+    $validated = $request->validate($rules);
 
-        $validated['active'] = $request->boolean('active', true); // Default to true
+    $validated['active'] = $request->boolean('active', true); // Default to true
+    $validated['sortorder'] = $request->input('sortorder', 0); // Save sortorder
         
         // Auto-assign company for non-SuperAdmin users
         if (!$user->hasPermissionTo('superadmin')) {
@@ -140,6 +141,7 @@ class CategoriesController extends Controller
         $validated = $request->validate($rules);
         
         $validated['active'] = $request->boolean('active', $category->active); // Preserve current value if not provided
+        $validated['sortorder'] = $request->input('sortorder', $category->sortorder); // Save sortorder
         
         // Auto-assign company for non-SuperAdmin users
         if (!$user->hasPermissionTo('superadmin')) {

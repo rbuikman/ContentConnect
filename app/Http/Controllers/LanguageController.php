@@ -68,7 +68,8 @@ class LanguageController extends Controller
         $validated = $request->validate($rules);
 
         $validated['active'] = $request->boolean('active', true); // Default to true
-        
+        $validated['sortorder'] = $request->input('sortorder', 0); // Save sortorder
+
         // Auto-assign company for non-SuperAdmin users
         if (!$user->hasPermissionTo('superadmin')) {
             $validated['company_id'] = $user->company_id;
@@ -139,7 +140,8 @@ class LanguageController extends Controller
         $language->name = $validated['name'];
         $language->code = $validated['code'];
         $language->active = $request->boolean('active', $language->active); // Keep existing value if not provided
-        
+        $language->sortorder = $request->input('sortorder', $language->sortorder); // Save sortorder
+
         // Only SuperAdmin users can change company
         if ($user->hasPermissionTo('superadmin') && isset($validated['company_id'])) {
             $language->company_id = $validated['company_id'];

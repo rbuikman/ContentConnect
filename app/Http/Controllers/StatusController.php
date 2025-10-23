@@ -55,9 +55,10 @@ class StatusController extends Controller
             $rules['company_id'] = 'required|exists:companies,id';
         }
 
-        $validated = $request->validate($rules);
+    $validated = $request->validate($rules);
 
-        $validated['active'] = $request->boolean('active', true); // Default to true
+    $validated['active'] = $request->boolean('active', true); // Default to true
+    $validated['sortorder'] = $request->input('sortorder', 0); // Save sortorder
         
         // Auto-assign company for non-SuperAdmin users
         if (!$user->hasPermissionTo('superadmin')) {
@@ -129,7 +130,8 @@ class StatusController extends Controller
 
         $status->name = $validated['name'];
         $status->active = $request->boolean('active', $status->active); // Keep existing value if not provided
-        
+        $status->sortorder = $request->input('sortorder', $status->sortorder); // Save sortorder
+
         // Only SuperAdmin users can change company
         if ($user->hasPermissionTo('superadmin') && isset($validated['company_id'])) {
             $status->company_id = $validated['company_id'];
