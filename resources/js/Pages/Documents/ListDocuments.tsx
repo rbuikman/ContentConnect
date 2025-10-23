@@ -1146,13 +1146,13 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             <Column field="note" header="Note" filter sortable filterPlaceholder="" style={{ minWidth: '18rem' }} editor={(options) => textEditor(options)}></Column>
           )}
           {visibleColumns.some(col => col.field === 'category') && (
-            <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
+            <Column field="category" body={categoryBodyTemplate} header="Category" filter filterElement={categoryFilterTemplate} filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
           )}
           {visibleColumns.some(col => col.field === 'subcategory') && (
-            <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} sortable filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
+            <Column field="subcategory" body={subCategoryBodyTemplate} header="Subcategory" filter filterElement={subCategoryFilterTemplate} filterPlaceholder="" style={{ minWidth: '9rem' }} showFilterMenu={false}></Column>
           )}
           {visibleColumns.some(col => col.field === 'status') && (
-            <Column field="status" body={statusBodyTemplate} header="Status" sortable filter filterElement={statusFilterTemplate} filterPlaceholder="" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '8rem' }}></Column>
+            <Column field="status" body={statusBodyTemplate} header="Status" filter filterElement={statusFilterTemplate} filterPlaceholder="" showFilterMenu={false} editor={(options) => statusEditor(options)}  style={{ minWidth: '8rem' }}></Column>
           )}
           {visibleColumns.some(col => col.field === 'languages') && (
             <Column field="languages" body={languagesBodyTemplate} header="Languages" filter filterElement={languagesFilterTemplate} editor={(options) => languagesEditor(options)} showFilterMenu={false} style={{ minWidth: '10rem' }}></Column>
