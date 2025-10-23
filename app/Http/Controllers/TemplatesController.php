@@ -27,18 +27,21 @@ class TemplatesController extends Controller
         }
 
         $query = $request->input('search');
-    $categoryId = $request->input('category_id');
-    $subCategoryId = $request->input('sub_category_id');
-    $statusId = $request->input('status_id');
-    $languageId = $request->input('language_id');
-    $contentId = $request->input('content_id');
-    $modifiedAt = $request->input('modified_at');
+        $categoryId = $request->input('category_id');
+        $subCategoryId = $request->input('sub_category_id');
+        $statusId = $request->input('status_id');
+        $languageId = $request->input('language_id');
+        $contentId = $request->input('content_id');
+        $modifiedAt = $request->input('modified_at');
 
         $documents = Document::with(['category', 'subcategory', 'status', 'languages', 'contents'])
             ->where('template', true)
             ->where('deleted', false);
 
         $documents->forCompany($user->company_id);
+
+        $sortField = $request->input('sortField');
+        $sortOrder = $request->input('sortOrder', 'desc');
 
         $documents = $documents
             ->when($query, function($q) use ($query) {
@@ -70,7 +73,17 @@ class TemplatesController extends Controller
             ->when($modifiedAt, function($q) use ($modifiedAt) {
                 $q->whereDate('modified_at', $modifiedAt);
             })
-            ->orderBy('modified_at', 'desc')
+            ->when($sortField, function($q) use ($sortField, $sortOrder) {
+                // Only allow sorting on known fields
+                $allowedSortFields = [
+                    'order_number', 'file_name', 'note', 'category_id', 'sub_category_id', 'status_id', 'modified_at', 'created_at', 'id'
+                ];
+                if (in_array($sortField, $allowedSortFields)) {
+                    $q->orderBy($sortField, $sortOrder === 'asc' ? 'asc' : 'desc');
+                }
+            }, function($q) {
+                $q->orderBy('modified_at', 'desc');
+            })
             ->paginate(env('ITEMLIST_COUNT', 50))
             ->withQueryString();
 

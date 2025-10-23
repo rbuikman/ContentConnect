@@ -16,16 +16,16 @@ class DocumentsController extends Controller
 {
     public function index(Request $request)
     {
-    $query = $request->input('search');
-    $orderNumber = $request->input('order_number');
-    $fileName = $request->input('file_name');
-    $note = $request->input('note');
-    $categoryId = $request->input('category_id');
-    $subCategoryId = $request->input('sub_category_id');
-    $statusId = $request->input('status_id');
-    $languageId = $request->input('language_id');
-    $contentId = $request->input('content_id');
-    $modifiedAt = $request->input('modified_at');
+        $query = $request->input('search');
+        $orderNumber = $request->input('order_number');
+        $fileName = $request->input('file_name');
+        $note = $request->input('note');
+        $categoryId = $request->input('category_id');
+        $subCategoryId = $request->input('sub_category_id');
+        $statusId = $request->input('status_id');
+        $languageId = $request->input('language_id');
+        $contentId = $request->input('content_id');
+        $modifiedAt = $request->input('modified_at');
 
         $documents = Document::with(['category', 'subcategory', 'status', 'baseTemplate', 'languages', 'contents'])
             ->where('template', false)
@@ -33,6 +33,9 @@ class DocumentsController extends Controller
 
         $user = auth()->user();
         $documents->forCompany($user->company_id);
+
+        $sortField = $request->input('sortField');
+        $sortOrder = $request->input('sortOrder', 'desc');
 
         $documents = $documents
             ->when($query, function($q) use ($query) {
@@ -73,7 +76,17 @@ class DocumentsController extends Controller
             ->when($modifiedAt, function($q) use ($modifiedAt) {
                 $q->whereDate('modified_at', $modifiedAt);
             })
-            ->orderBy('modified_at', 'desc')
+            ->when($sortField, function($q) use ($sortField, $sortOrder) {
+                // Only allow sorting on known fields
+                $allowedSortFields = [
+                    'order_number', 'file_name', 'note', 'category_id', 'sub_category_id', 'status_id', 'modified_at', 'created_at', 'id'
+                ];
+                if (in_array($sortField, $allowedSortFields)) {
+                    $q->orderBy($sortField, $sortOrder === 'asc' ? 'asc' : 'desc');
+                }
+            }, function($q) {
+                $q->orderBy('modified_at', 'desc');
+            })
             ->paginate(perPage: env('ITEMLIST_COUNT', 50))
             ->withQueryString();
 

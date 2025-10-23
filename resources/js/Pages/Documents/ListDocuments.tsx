@@ -144,11 +144,16 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-  const [currentPage, setCurrentPage] = useState(documents.current_page);
-  const [first, setFirst] = useState((documents.current_page - 1) * documents.per_page);
+    const [currentPage, setCurrentPage] = useState(documents.current_page);
+    const [first, setFirst] = useState((documents.current_page - 1) * documents.per_page);
     const [expandedRows, setExpandedRows] = useState<any>(null);
     const toast = useRef<Toast>(null);
     const columnToggleRef = useRef<OverlayPanel>(null);
+    // Track sort field and order for DataTable UI
+  const [sortField, setSortField] = useState<string | undefined>(page.props.sortField as string | undefined);
+  // Only allow 1 or -1 for sortOrder, default to 1 (asc)
+  const initialSortOrder = typeof page.props.sortOrder === 'string' ? (page.props.sortOrder === 'asc' ? 1 : page.props.sortOrder === 'desc' ? -1 : 1) : 1;
+  const [sortOrder, setSortOrder] = useState<1 | -1>(initialSortOrder);
 
     // Helper function to check if user has permission
     const hasPermission = (permission: string) => {
@@ -1038,8 +1043,6 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           globalFilterFields={template ? ['file_name', 'note'] : ['order_number', 'file_name', 'note']}
           emptyMessage="No documents found."
           onFilter={(e) => {
-            // Debug: log filter event
-            console.log('DataTable filter event:', e.filters);
             setFilters(e.filters);
             const filterParams: any = {
               page: 1,
@@ -1051,7 +1054,6 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
               }
               return undefined;
             };
-
             // Text filters for order_number, file_name, note
             const orderNumberValue = getFilterValue(e.filters.order_number);
             if (orderNumberValue) filterParams.order_number = orderNumberValue;
@@ -1059,7 +1061,6 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             if (fileNameValue) filterParams.file_name = fileNameValue;
             const noteValue = getFilterValue(e.filters.note);
             if (noteValue) filterParams.note = noteValue;
-
             // Dropdown filters
             const categoryValue = getFilterValue(e.filters.category);
             if (categoryValue) filterParams.category_id = categoryValue.id || categoryValue;
@@ -1074,16 +1075,37 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             const modifiedAtValue = getFilterValue(e.filters.modified_at);
             if (modifiedAtValue) filterParams.modified_at = modifiedAtValue;
             // Debug: log outgoing filter params
-            console.log('Sending filter params to backend:', filterParams);
             if (typeof router !== 'undefined' && router.get) {
               router.get(window.location.pathname, filterParams, {
                 preserveState: true,
                 preserveScroll: true,
               });
-            } else {
-              console.error('Inertia router is not available!');
             }
           }}
+          onSort={(e) => {
+            // Server-side sorting handler
+            setSortField(e.sortField);
+            setSortOrder(e.sortOrder === 1 ? 1 : -1);
+            const sortParams: any = {
+              page: documents.current_page,
+              search: globalFilterValue,
+              sortField: e.sortField,
+              sortOrder: e.sortOrder === 1 ? 'asc' : 'desc',
+            };
+            // Include filters in sort request
+            Object.keys(filters).forEach((key) => {
+              const filter = filters[key];
+              if (filter && typeof filter === 'object' && 'value' in filter && filter.value) {
+                sortParams[key] = filter.value;
+              }
+            });
+            router.get(window.location.pathname, sortParams, {
+              preserveState: true,
+              preserveScroll: true,
+            });
+          }}
+          sortField={sortField}
+          sortOrder={sortOrder as 1 | -1}
           onRowEditComplete={onRowEditComplete}
           expandedRows={expandedRows}
           onRowToggle={(e) => setExpandedRows(e.data)}
