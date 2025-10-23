@@ -1132,6 +1132,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             statuses={statuses} // Pass statuses to EditDocumentModal
             languages={languages} // Pass languages to EditDocumentModal
             contents={contents || []} // Pass contents to EditDocumentModal
+            template={template} // Pass template mode to EditDocumentModal
             onClose={() => {
               setShowEditModal(false);
               setSelectedDocument(null);

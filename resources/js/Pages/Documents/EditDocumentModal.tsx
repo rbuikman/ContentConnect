@@ -60,6 +60,7 @@ interface EditDocumentModalProps {
   statuses: Status[]; // Add statuses to props
   languages: Language[]; // Add languages to props
   contents: Content[]; // Add contents to props
+  template?: boolean; // Add template parameter to determine context
   onClose: () => void;
 }
 
@@ -79,6 +80,7 @@ export default function EditDocumentModal({
   statuses, // Destructure statuses
   languages, // Destructure languages
   contents, // Destructure contents
+  template = false, // Destructure template with default value
   onClose,
 }: EditDocumentModalProps) {
   const { errors } = usePage().props as any;
@@ -189,8 +191,9 @@ export default function EditDocumentModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - Fixed */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-          <h3 className="text-lg font-semibold text-gray-900">Edit Document</h3>
+                {/* Header - Fixed */}
+        <div className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
+          <h3 className="text-lg font-semibold text-gray-900">{template ? 'Edit Template' : 'Edit Document'}</h3>
           <button
             type="button"
             onClick={onClose}
