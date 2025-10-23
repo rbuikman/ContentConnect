@@ -24,7 +24,7 @@ class StatusController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        $statuses = $query->paginate(0)->withQueryString();
+        $statuses = $query->paginate(env('ITEMLIST_COUNT', 50))->withQueryString();
 
         // Get companies for SuperAdmin users
         $companies = [];

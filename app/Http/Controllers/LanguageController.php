@@ -25,7 +25,7 @@ class LanguageController extends Controller
                   ->orWhere('code', 'like', "%{$search}%");
         }
 
-        $languages = $query->paginate(0)->withQueryString();
+        $languages = $query->paginate(env('ITEMLIST_COUNT', 50))->withQueryString();
 
         // Get companies for SuperAdmin users
         $companies = [];

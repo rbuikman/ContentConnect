@@ -16,23 +16,81 @@ class DocumentsController extends Controller
 {
     public function index(Request $request)
     {
-        $query = $request->input('search');
+    $query = $request->input('search');
+    $orderNumber = $request->input('order_number');
+    $fileName = $request->input('file_name');
+    $note = $request->input('note');
+    $categoryId = $request->input('category_id');
+    $subCategoryId = $request->input('sub_category_id');
+    $statusId = $request->input('status_id');
+    $languageId = $request->input('language_id');
+    $contentId = $request->input('content_id');
+    $modifiedAt = $request->input('modified_at');
 
-        $documents = Document::with(['category', 'subcategory', 'status', 'baseTemplate', 'languages', 'contents']) // Added 'contents' relationship
-            ->where('template', false) // Filter for documents only (not templates)
-            ->where('deleted', false); // Filter out deleted records
+        $documents = Document::with(['category', 'subcategory', 'status', 'baseTemplate', 'languages', 'contents'])
+            ->where('template', false)
+            ->where('deleted', false);
 
-        // Apply company scoping - always filter by user's company
         $user = auth()->user();
         $documents->forCompany($user->company_id);
 
-        $documents = $documents->when($query, function($q) use ($query) {
-                $q->where('order_number', 'like', "%{$query}%")
-                ->orWhere('file_name', 'like', "%{$query}%");
+        $documents = $documents
+            ->when($query, function($q) use ($query) {
+                $q->where(function($subQ) use ($query) {
+                    $subQ->where('order_number', 'like', "%{$query}%")
+                        ->orWhere('file_name', 'like', "%{$query}%")
+                        ->orWhere('note', 'like', "%{$query}%");
+                });
             })
-            ->orderBy('modified_at', 'desc') // Sort by modified_at descending
-            ->paginate(0)
-            ->withQueryString(); // houdt de search parameter bij in paginatie
+            ->when($orderNumber, function($q) use ($orderNumber) {
+                $q->where('order_number', 'like', "%{$orderNumber}%");
+            })
+            ->when($fileName, function($q) use ($fileName) {
+                $q->where('file_name', 'like', "%{$fileName}%");
+            })
+            ->when($note, function($q) use ($note) {
+                $q->where('note', 'like', "%{$note}%");
+            })
+            ->when($categoryId, function($q) use ($categoryId) {
+                $q->where('category_id', $categoryId);
+            })
+            ->when($subCategoryId, function($q) use ($subCategoryId) {
+                $q->where('sub_category_id', $subCategoryId);
+            })
+            ->when($statusId, function($q) use ($statusId) {
+                $q->where('status_id', $statusId);
+            })
+            ->when($languageId, function($q) use ($languageId) {
+                $q->whereHas('languages', function($langQ) use ($languageId) {
+                    $langQ->where('languages.id', $languageId);
+                });
+            })
+            ->when($contentId, function($q) use ($contentId) {
+                $q->whereHas('contents', function($contQ) use ($contentId) {
+                    $contQ->where('contents.id', $contentId);
+                });
+            })
+            ->when($modifiedAt, function($q) use ($modifiedAt) {
+                $q->whereDate('modified_at', $modifiedAt);
+            })
+            ->orderBy('modified_at', 'desc')
+            ->paginate(perPage: env('ITEMLIST_COUNT', 50))
+            ->withQueryString();
+
+        Log::info('Documents Controller - Pagination Debug', [
+            'total' => $documents->total(),
+            'per_page' => $documents->perPage(),
+            'current_page' => $documents->currentPage(),
+            'count' => $documents->count(),
+            'company_id' => $user->company_id,
+            'query' => $query,
+            'category_id' => $categoryId,
+            'sub_category_id' => $subCategoryId,
+            'status_id' => $statusId,
+            'language_id' => $languageId,
+            'content_id' => $contentId,
+            'modified_at' => $modifiedAt,
+        ]);
 
         return Inertia::render('Documents/ListDocuments', [
             'documents' => $documents ?? [
@@ -43,7 +101,7 @@ class DocumentsController extends Controller
             'statuses' => Status::where('active', true)->forCompany($user->company_id)->get(),
             'languages' => Language::where('active', true)->forCompany($user->company_id)->get(),
             'contents' => Content::where('active', true)->forCompany($user->company_id)->get(),
-            'templates' => Document::where('template', true)->where('deleted', false)->forCompany($user->company_id)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']),
+            'templates' => Document::where('template', true)->where('deleted', false)->forCompany($user->company_id)->with(['languages', 'contents'])->get(['id', 'file_name', 'category_id', 'sub_category_id']),
             'template' => false, // Pass template parameter for documents
             'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
             'webeditorDocumentPath' => str_replace('{company}', $user->company->name, config('app.webeditor_document_path')), // Add document path from config

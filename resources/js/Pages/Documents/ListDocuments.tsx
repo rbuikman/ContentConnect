@@ -14,7 +14,7 @@ import { InputIcon } from 'primereact/inputicon';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog'; // Import ConfirmDialog
 import { Tag } from 'primereact/tag';
 import { Dropdown, DropdownChangeEvent } from 'primereact/dropdown';
-import { MultiSelect } from 'primereact/multiselect';
+import { MultiSelect, MultiSelectChangeEvent } from 'primereact/multiselect';
 import { Menu } from 'primereact/menu';
 import { OverlayPanel } from 'primereact/overlaypanel';
 import { router, usePage } from "@inertiajs/react";
@@ -121,16 +121,16 @@ interface ColumnConfig {
 }
 
 const defaultFilters: DataTableFilterMeta = {
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    order_number: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    file_name: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    note: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    category: { value: null, matchMode: FilterMatchMode.EQUALS },
-    subcategory: { value: null, matchMode: FilterMatchMode.EQUALS },
-    status: { value: null, matchMode: FilterMatchMode.EQUALS },
-    languages: { value: null, matchMode: 'languageContains' as any },
-    contents: { value: null, matchMode: 'contentContains' as any },
-    modified_at: { value: null, matchMode: FilterMatchMode.DATE_IS }
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  order_number: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  file_name: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  note: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  category: { value: null, matchMode: FilterMatchMode.EQUALS },
+  subcategory: { value: null, matchMode: FilterMatchMode.EQUALS },
+  status: { value: null, matchMode: FilterMatchMode.EQUALS },
+  languages: { value: null, matchMode: 'languageContains' as any },
+  contents: { value: null, matchMode: 'contentContains' as any },
+  modified_at: { value: null, matchMode: FilterMatchMode.DATE_IS }
 };
 
 
@@ -144,7 +144,8 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(documents.current_page);
+  const [first, setFirst] = useState((documents.current_page - 1) * documents.per_page);
     const [expandedRows, setExpandedRows] = useState<any>(null);
     const toast = useRef<Toast>(null);
     const columnToggleRef = useRef<OverlayPanel>(null);
@@ -199,9 +200,10 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     const [visibleColumns, setVisibleColumns] = useState<ColumnConfig[]>(getInitialVisibleColumns());
 
     useEffect(() => {
-        setLoading(false);
-        initFilters();
-        setCurrentPage(documents.current_page);
+  setLoading(false);
+  initFilters();
+  setCurrentPage(documents.current_page);
+  setFirst((documents.current_page - 1) * documents.per_page);
         
         // Register custom filter for languages
         FilterService.register('languageContains', (value: Language[], filter: Language) => {
@@ -344,10 +346,9 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     };
 
     const onPageChange = (event: any) => {
-        const page = event.page + 1; // PrimeReact uses 0-based indexing, Laravel uses 1-based
-        setCurrentPage(page);
-        
-        // Use Inertia to navigate to the new page
+    const page = event.page + 1; // PrimeReact uses 0-based indexing, Laravel uses 1-based
+    setCurrentPage(page);
+    setFirst(event.first);
         router.get(window.location.pathname, { 
             page: page,
             search: globalFilterValue 
@@ -458,22 +459,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 value={options.value} // Bind the selected value
                 options={statuses} 
                 onChange={(e: DropdownChangeEvent) => {
-                    if (options.filterCallback) {
-                        const selectedValue = e.value ? e.value : null; // Use the id property for filtering as status_id
-                        options.filterCallback(selectedValue, options.index ?? 0); // Update the filter model
-                        var statusId: number | null = null;
-                        if (selectedValue) {
-                            statusId = selectedValue.id;
-                        }
-                        // Update the filters state to ensure DataTable reflects the changes
-                        setFilters((prevFilters) => ({
-                            ...prevFilters,
-                            status: { value: selectedValue, matchMode: FilterMatchMode.EQUALS }, // Use status for filtering
-                            status_id: { value: statusId, matchMode: FilterMatchMode.EQUALS }, // Use status_id for filtering
-                        }));
-                    } else {
-                        console.error('filterCallback is not defined');
-                    }
+                    options.filterApplyCallback(e.value);
                 }}
                 optionLabel="name" // Display the name property in the dropdown
                 placeholder="" 
@@ -523,36 +509,19 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
       }
     }
 
-
-
     const categoryFilterTemplate = (options: ColumnFilterElementTemplateOptions) => {
         return (
-            <Dropdown 
-                value={options.value} // Bind the selected value
-                options={categories} 
-                onChange={(e: DropdownChangeEvent) => {
-                    if (options.filterCallback) {
-                        const selectedValue = e.value ? e.value : null; // Use the id property for filtering as status_id
-                        options.filterCallback(selectedValue, options.index ?? 0); // Update the filter model
-                        var categoryId: number | null = null;
-                        if (selectedValue) {
-                            categoryId = selectedValue.id;
-                        }
-                        // Update the filters state to ensure DataTable reflects the changes
-                        setFilters((prevFilters) => ({
-                            ...prevFilters,
-                            category: { value: selectedValue, matchMode: FilterMatchMode.EQUALS }, // Use status for filtering
-                            category_id: { value: categoryId, matchMode: FilterMatchMode.EQUALS }, // Use status_id for filtering
-                        }));
-                    } else {
-                        console.error('filterCallback is not defined');
-                    }
-                }}
-                optionLabel="name" // Display the name property in the dropdown
-                placeholder="" 
-                className="p-column-filter" 
-                showClear 
-            />
+        <Dropdown 
+            value={options.value}
+            options={categories}
+            onChange={(e: DropdownChangeEvent) => {
+                    options.filterApplyCallback(e.value);
+            }}
+            optionLabel="name"
+            placeholder=""
+            className="p-column-filter"
+            showClear
+        />
         );
     };
 
@@ -598,28 +567,28 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 value={options.value} // Bind the selected value
                 options={subcategories} 
                 onChange={(e: DropdownChangeEvent) => {
-                    if (options.filterCallback) {
-                        const selectedValue = e.value ? e.value : null; // Use the id property for filtering as status_id
-                        options.filterCallback(selectedValue, options.index ?? 0); // Update the filter model
-                        var subCategoryId: number | null = null;
-                        if (selectedValue) {
-                            subCategoryId = selectedValue.id;
-                        }
-                        // Update the filters state to ensure DataTable reflects the changes
-                        setFilters((prevFilters) => ({
-                            ...prevFilters,
-                            subcategory: { value: selectedValue, matchMode: FilterMatchMode.EQUALS }, // Use status for filtering
-                            sub_category_id: { value: subCategoryId, matchMode: FilterMatchMode.EQUALS }, // Use status_id for filtering
-                        }));
-                    } else {
-                        console.error('filterCallback is not defined');
-                    }
+                    options.filterApplyCallback(e.value);
                 }}
                 optionLabel="name" // Display the name property in the dropdown
                 placeholder="" 
                 className="p-column-filter"
                 showClear 
             />
+            /*
+            <MultiSelect
+                value={options.value}
+                options={subcategories}
+                itemTemplate={subCategoryBodyTemplate}
+                onChange={(e: MultiSelectChangeEvent) => options.filterApplyCallback(e.value)}
+                optionLabel="name"
+                placeholder="Any"
+                className="p-column-filter"
+                maxSelectedLabels={1}
+                style={{ minWidth: '14rem' }}
+                showClear
+            />
+*/
+
         );
     };
 
@@ -629,17 +598,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 value={options.value} // Bind the selected value
                 options={languages} 
                 onChange={(e: DropdownChangeEvent) => {
-                    const selectedValue = e.value || null;
-                    
-                    if (options.filterCallback) {
-                        options.filterCallback(selectedValue, options.index ?? 0);
-                    }
-                    
-                    // Update the filters state
-                    setFilters((prevFilters) => ({
-                        ...prevFilters,
-                        languages: { value: selectedValue, matchMode: 'languageContains' as any },
-                    }));
+                    options.filterApplyCallback(e.value);
                 }}
                 optionLabel="name" // Display the name property in the dropdown
                 placeholder="" 
@@ -655,17 +614,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 value={options.value} // Bind the selected value
                 options={contents} 
                 onChange={(e: DropdownChangeEvent) => {
-                    const selectedValue = e.value || null;
-                    
-                    if (options.filterCallback) {
-                        options.filterCallback(selectedValue, options.index ?? 0);
-                    }
-                    
-                    // Update the filters state
-                    setFilters((prevFilters) => ({
-                        ...prevFilters,
-                        contents: { value: selectedValue, matchMode: 'contentContains' as any },
-                    }));
+                    options.filterApplyCallback(e.value);
                 }}
                 optionLabel="name" // Display the name property in the dropdown
                 placeholder="" 
@@ -738,9 +687,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                     </button>
                   )
                 )}
-                <div className="text-sm text-gray-600 font-medium">
-                  Total: {documents.total} {template ? 'template' : 'document'}{documents.total !== 1 ? 's' : ''}
-                </div>
+
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative w-64">
@@ -871,6 +818,16 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                                     </div>
                                 </div>
                             )}
+                            {data.contents && data.contents.length > 0 && (
+                                <div className="text-sm">
+                                    <span className="font-medium">Content:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                        {data.contents.map((content: Content) => (
+                                            <Tag key={content.id} value={content.name} className="text-xs" />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             <p className="text-sm"><span className="font-medium">Created:</span> {formatDate(new Date(data.created_at!))}</p>
                             <p className="text-sm"><span className="font-medium">Created by:</span> {data.created_by}</p>
                             <p className="text-sm"><span className="font-medium">Modified:</span> {formatDate(new Date(data.modified_at!))}</p>
@@ -879,89 +836,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                     </div>
                 </div>
 
-                {/* Associated Content Section */}
-                {data.contents && data.contents.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                        <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-3">Associated Content</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {data.contents.map((content: Content) => {
-                                const isExcelFile = content.mime_type?.includes('spreadsheet') || content.mime_type?.includes('excel');
-                                const isImageFile = content.mime_type?.startsWith('image/');
-                                
-                                return (
-                                    <div key={content.id} className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg bg-white">
-                                        {/* Thumbnail/Icon */}
-                                        <div className={`flex-shrink-0 flex items-center justify-center rounded-lg bg-gray-100 overflow-hidden ${
-                                            isImageFile && content.file_path ? 'w-12 h-12' : 'w-10 h-10'
-                                        }`}>
-                                            {isImageFile && content.file_path ? (
-                                                <img 
-                                                    src={`/contents/preview/${content.id}`}
-                                                    alt={content.name}
-                                                    className="w-full h-full object-cover rounded-lg"
-                                                    onError={(e) => {
-                                                        const target = e.target as HTMLImageElement;
-                                                        target.style.display = 'none';
-                                                        const parent = target.parentElement;
-                                                        if (parent) {
-                                                            parent.className = 'flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-gray-100';
-                                                            parent.innerHTML = `
-                                                                <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded flex items-center justify-center">
-                                                                    <i class="pi pi-image text-white text-sm"></i>
-                                                                </div>
-                                                            `;
-                                                        }
-                                                    }}
-                                                />
-                                            ) : isExcelFile ? (
-                                                <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded flex items-center justify-center">
-                                                    <i className="pi pi-file-excel text-white text-sm"></i>
-                                                </div>
-                                            ) : (
-                                                <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-600 rounded flex items-center justify-center">
-                                                    <i className="pi pi-file text-white text-sm"></i>
-                                                </div>
-                                            )}
-                                        </div>
-                                        
-                                        {/* Content Info */}
-                                        <div className="flex-1 min-w-0">
-                                            <h5 className="text-sm font-medium text-gray-900 truncate">{content.name}</h5>
-                                            
-                                            {content.original_filename && (
-                                                <p className="text-xs text-gray-500 truncate">📄 {content.original_filename}</p>
-                                            )}
-                                            
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                    content.is_network_path 
-                                                        ? 'bg-orange-100 text-orange-800' 
-                                                        : 'bg-blue-100 text-blue-800'
-                                                }`}>
-                                                    <i className={`pi ${content.is_network_path ? 'pi-link' : 'pi-desktop'} text-xs`}></i>
-                                                    {content.is_network_path ? 'Network' : 'Local'}
-                                                </span>
-                                                
-                                                {content.file_size && (
-                                                    <span className="text-xs text-gray-400">
-                                                        {formatFileSize(content.file_size)}
-                                                    </span>
-                                                )}
-                                                
-                                                {isImageFile && (
-                                                    <span className="text-xs text-purple-600 font-medium">🖼️ Image</span>
-                                                )}
-                                                {isExcelFile && (
-                                                    <span className="text-xs text-green-600 font-medium">📊 Excel</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
+
 
                 {/* Large Thumbnail Section */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
@@ -1150,29 +1025,77 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           tableStyle={{ minWidth: '50rem' }}
           rowClassName={() => 'compact-row'}
           value={documents.data}
-          editMode="row" 
+          editMode="row"
           resizableColumns
+          paginator={true}
+          lazy={true}
           first={(documents.current_page - 1) * documents.per_page}
           rows={documents.per_page}
           totalRecords={documents.total}
           onPage={onPageChange}
           dataKey="id"
           filters={filters}
-         // filterDisplay="row"
           globalFilterFields={template ? ['file_name', 'note'] : ['order_number', 'file_name', 'note']}
           emptyMessage="No documents found."
-          onFilter={(e) => setFilters(e.filters)}
+          onFilter={(e) => {
+            // Debug: log filter event
+            console.log('DataTable filter event:', e.filters);
+            setFilters(e.filters);
+            const filterParams: any = {
+              page: 1,
+              search: globalFilterValue,
+            };
+            const getFilterValue = (filter: any) => {
+              if (filter && typeof filter === 'object' && 'value' in filter) {
+                return filter.value;
+              }
+              return undefined;
+            };
+
+            // Text filters for order_number, file_name, note
+            const orderNumberValue = getFilterValue(e.filters.order_number);
+            if (orderNumberValue) filterParams.order_number = orderNumberValue;
+            const fileNameValue = getFilterValue(e.filters.file_name);
+            if (fileNameValue) filterParams.file_name = fileNameValue;
+            const noteValue = getFilterValue(e.filters.note);
+            if (noteValue) filterParams.note = noteValue;
+
+            // Dropdown filters
+            const categoryValue = getFilterValue(e.filters.category);
+            if (categoryValue) filterParams.category_id = categoryValue.id || categoryValue;
+            const subcategoryValue = getFilterValue(e.filters.subcategory);
+            if (subcategoryValue) filterParams.sub_category_id = subcategoryValue.id || subcategoryValue;
+            const statusValue = getFilterValue(e.filters.status);
+            if (statusValue) filterParams.status_id = statusValue.id || statusValue;
+            const languageValue = getFilterValue(e.filters.languages);
+            if (languageValue) filterParams.language_id = languageValue.id || languageValue;
+            const contentValue = getFilterValue(e.filters.contents);
+            if (contentValue) filterParams.content_id = contentValue.id || contentValue;
+            const modifiedAtValue = getFilterValue(e.filters.modified_at);
+            if (modifiedAtValue) filterParams.modified_at = modifiedAtValue;
+            // Debug: log outgoing filter params
+            console.log('Sending filter params to backend:', filterParams);
+            if (typeof router !== 'undefined' && router.get) {
+              router.get(window.location.pathname, filterParams, {
+                preserveState: true,
+                preserveScroll: true,
+              });
+            } else {
+              console.error('Inertia router is not available!');
+            }
+          }}
           onRowEditComplete={onRowEditComplete}
           expandedRows={expandedRows}
           onRowToggle={(e) => setExpandedRows(e.data)}
-          rowExpansionTemplate={rowExpansionTemplate} 
-          scrollable 
+          rowExpansionTemplate={rowExpansionTemplate}
+          scrollable
           scrollHeight="calc(100vh - 294px)"
           header={header}
           removableSort
           reorderableColumns
-          stateStorage="session" stateKey="contentconnect-dt-state" 
-          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} documents" 
+          stateStorage="session" stateKey="contentconnect-dt-state"
+          currentPageReportTemplate={`Showing {first} to {last} of ${documents.total} documents`}
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
         >
         {/*}  <Column field="id" header="ID" sortable filter filterPlaceholder="Search by ID" style={{ minWidth: '12rem' }}></Column> */}
           <Column expander={true} style={{ width: '3rem', minWidth: '3rem', maxWidth: '3rem' }} />
@@ -1308,7 +1231,17 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
 
       <OverlayPanel ref={columnToggleRef} className="w-80">
         <div className="p-3">
-          <h4 className="text-lg font-semibold mb-3 text-gray-700">Column Visibility</h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-lg font-semibold text-gray-700">Column Visibility</h4>
+            <button
+              type="button"
+              onClick={() => columnToggleRef.current?.hide()}
+              className="text-gray-500 hover:text-gray-800 transition-colors duration-200"
+              aria-label="Close dialog"
+            >
+              <i className="pi pi-times text-lg"></i>
+            </button>
+          </div>
           <div className="space-y-2">
             {allColumns.map((column) => {
               const isVisible = visibleColumns.some(col => col.field === column.field);

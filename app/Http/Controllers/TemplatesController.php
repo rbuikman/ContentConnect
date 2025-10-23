@@ -27,21 +27,52 @@ class TemplatesController extends Controller
         }
 
         $query = $request->input('search');
+    $categoryId = $request->input('category_id');
+    $subCategoryId = $request->input('sub_category_id');
+    $statusId = $request->input('status_id');
+    $languageId = $request->input('language_id');
+    $contentId = $request->input('content_id');
+    $modifiedAt = $request->input('modified_at');
 
-        $documents = Document::with(['category', 'subcategory', 'status', 'languages', 'contents']) // Added 'contents' relationship
-            ->where('template', true) // Filter for templates only
-            ->where('deleted', false); // Filter out deleted records
+        $documents = Document::with(['category', 'subcategory', 'status', 'languages', 'contents'])
+            ->where('template', true)
+            ->where('deleted', false);
 
-        // Apply company scoping - always filter by user's company
         $documents->forCompany($user->company_id);
 
-        $documents = $documents->when($query, function($q) use ($query) {
-                $q->where('order_number', 'like', "%{$query}%")
-                ->orWhere('file_name', 'like', "%{$query}%");
+        $documents = $documents
+            ->when($query, function($q) use ($query) {
+                $q->where(function($subQ) use ($query) {
+                    $subQ->where('order_number', 'like', "%{$query}%")
+                        ->orWhere('file_name', 'like', "%{$query}%")
+                        ->orWhere('note', 'like', "%{$query}%");
+                });
             })
-            ->orderBy('modified_at', 'desc') // Sort by modified_at descending
-            ->paginate(0)
-            ->withQueryString(); // houdt de search parameter bij in paginatie
+            ->when($categoryId, function($q) use ($categoryId) {
+                $q->where('category_id', $categoryId);
+            })
+            ->when($subCategoryId, function($q) use ($subCategoryId) {
+                $q->where('sub_category_id', $subCategoryId);
+            })
+            ->when($statusId, function($q) use ($statusId) {
+                $q->where('status_id', $statusId);
+            })
+            ->when($languageId, function($q) use ($languageId) {
+                $q->whereHas('languages', function($langQ) use ($languageId) {
+                    $langQ->where('languages.id', $languageId);
+                });
+            })
+            ->when($contentId, function($q) use ($contentId) {
+                $q->whereHas('contents', function($contQ) use ($contentId) {
+                    $contQ->where('contents.id', $contentId);
+                });
+            })
+            ->when($modifiedAt, function($q) use ($modifiedAt) {
+                $q->whereDate('modified_at', $modifiedAt);
+            })
+            ->orderBy('modified_at', 'desc')
+            ->paginate(env('ITEMLIST_COUNT', 50))
+            ->withQueryString();
 
         return Inertia::render('Documents/ListDocuments', [
             'documents' => $documents ?? [
@@ -52,7 +83,7 @@ class TemplatesController extends Controller
             'statuses' => Status::where('active', true)->forCompany($user->company_id)->get(),
             'languages' => Language::where('active', true)->forCompany($user->company_id)->get(),
             'contents' => \App\Models\Content::where('active', true)->forCompany($user->company_id)->get(),
-            'templates' => Document::where('template', true)->where('deleted', false)->forCompany($user->company_id)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']),
+            'templates' => Document::where('template', true)->where('deleted', false)->forCompany($user->company_id)->with(['languages', 'contents'])->get(['id', 'file_name', 'category_id', 'sub_category_id']),
             'template' => true, // Pass template parameter for templates
             'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
             'webeditorDocumentPath' => str_replace('{company}', $user->company->name, config('app.webeditor_template_path')), // Add template path from config

@@ -22,7 +22,7 @@ class CompanyController extends Controller
                 $q->where('name', 'like', "%{$query}%");
             })
             ->orderBy('name', 'asc')
-            ->paginate(10)
+            ->paginate(env('ITEMLIST_COUNT', 50))
             ->withQueryString();
 
         return Inertia::render('Companies/ListCompanies', [

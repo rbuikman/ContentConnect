@@ -35,7 +35,7 @@ class UsersController extends Controller
             $usersQuery->where('company_id', $currentUser->company_id);
         }
 
-        $users = $usersQuery->paginate(0)->withQueryString(); // houdt de search parameter bij in paginatie
+        $users = $usersQuery->paginate(perPage: env('ITEMLIST_COUNT', 50))->withQueryString(); // houdt de search parameter bij in paginatie
 
         // Filter roles based on user permissions for role dropdown
         if ($currentUser->hasPermissionTo('superadmin')) {

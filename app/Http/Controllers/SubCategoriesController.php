@@ -25,7 +25,7 @@ class SubCategoriesController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        $subcategories = $query->paginate(15)->withQueryString();
+        $subcategories = $query->paginate(env('ITEMLIST_COUNT', 50))->withQueryString();
 
         return Inertia::render('SubCategories/ListSubCategories', [
             'subcategories' => $subcategories

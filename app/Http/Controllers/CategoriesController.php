@@ -25,7 +25,7 @@ class CategoriesController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        $categories = $query->paginate(0)->withQueryString();
+        $categories = $query->paginate(env('ITEMLIST_COUNT', 50))->withQueryString();
 
         $companies = [];
         if ($user->hasPermissionTo('superadmin')) {

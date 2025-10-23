@@ -29,7 +29,7 @@ class ContentsController extends Controller
             });
         }
 
-        $contents = $query->paginate(0);
+        $contents = $query->paginate(env('ITEMLIST_COUNT', 50));
 
         return Inertia::render('Contents/ListContents', [
             'contents' => $contents,
