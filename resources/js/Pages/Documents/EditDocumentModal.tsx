@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
 import { MultiSelect } from "primereact/multiselect";
+import { TabView, TabPanel } from 'primereact/tabview';
 
 interface Category {
   id: number;
@@ -28,8 +29,16 @@ interface Language {
 interface Content {
   id: number;
   name: string;
-  excel_file_path: string | null;
+  file_path: string | null;
+  mime_type: string | null;
+  original_filename: string | null;
+  file_size: number | null;
   is_network_path: boolean;
+  active: boolean;
+  created_by: string;
+  modified_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Document {
@@ -85,6 +94,7 @@ export default function EditDocumentModal({
     document.contents?.map(content => content.id) || []
   );
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number>(0);
 
   // Handle escape key to close modal
   useEffect(() => {
@@ -151,6 +161,15 @@ export default function EditDocumentModal({
     setSelectedContentIds(selectedContents.map(content => content.id));
   };
 
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const k = 1024;
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + units[i];
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = {
@@ -183,8 +202,10 @@ export default function EditDocumentModal({
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4">
-          <form id="edit-document-form" onSubmit={handleSubmit} className="space-y-4">
-            {/* All form fields go here - content will be scrollable */}
+          <form id="edit-document-form" onSubmit={handleSubmit}>
+            <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+              <TabPanel header="Document Details">
+                <div className="space-y-4">
           {/* Order Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Order Number</label>
@@ -275,7 +296,11 @@ export default function EditDocumentModal({
               ))}
             </select>
           </div>
-
+                </div>
+              </TabPanel>
+              
+              <TabPanel header="Languages & Content">
+                <div className="space-y-4">
           {/* Languages */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Languages</label>
@@ -299,37 +324,173 @@ export default function EditDocumentModal({
 
           {/* Contents */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Associated Contents (Optional)
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Associated Content (Optional)
             </label>
-            <MultiSelect
-              value={contents?.filter(content => selectedContentIds.includes(content.id)) || []}
-              onChange={(e) => handleContentChange(e.value)}
-              options={contents || []}
-              optionLabel="name"
-              filter
-              placeholder="Select contents to associate with this document"
-              maxSelectedLabels={3}
-              className="w-full"
-              itemTemplate={(option) => (
-                <div className="flex items-center gap-2">
-                  <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-sm`}></i>
-                  <span>{option?.name || '-'}</span>
-                  <span className="text-xs text-gray-500">
-                    ({option?.is_network_path ? 'Network' : 'Local'})
+            
+            {/* Content Selection Grid */}
+            <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-gray-50">
+              {contents && contents.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {contents.map((content) => {
+                    const isSelected = selectedContentIds.includes(content.id);
+                    const isExcelFile = content.mime_type?.includes('spreadsheet') || content.mime_type?.includes('excel');
+                    const isImageFile = content.mime_type?.startsWith('image/');
+                    
+                    return (
+                      <div
+                        key={content.id}
+                        onClick={() => {
+                          const currentSelection = contents.filter(c => selectedContentIds.includes(c.id));
+                          if (isSelected) {
+                            // Remove from selection
+                            const newSelection = currentSelection.filter(c => c.id !== content.id);
+                            handleContentChange(newSelection);
+                          } else {
+                            // Add to selection
+                            handleContentChange([...currentSelection, content]);
+                          }
+                        }}
+                        className={`
+                          cursor-pointer border-2 rounded-lg p-3 transition-all duration-200 hover:shadow-md
+                          ${isSelected 
+                            ? 'border-blue-500 bg-blue-50 shadow-sm' 
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                          }
+                        `}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Thumbnail/Icon Area */}
+                          <div className={`flex-shrink-0 flex items-center justify-center rounded-lg bg-gray-100 overflow-hidden ${
+                            isImageFile && content.file_path ? 'w-16 h-16' : 'w-12 h-12'
+                          }`}>
+                            {isImageFile && content.file_path ? (
+                              <img 
+                                src={`/contents/preview/${content.id}`}
+                                alt={content.name}
+                                className="w-full h-full object-cover rounded-lg shadow-sm"
+                                onError={(e) => {
+                                  // Fallback to icon if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.className = 'flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg bg-gray-100';
+                                    parent.innerHTML = `
+                                      <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded flex items-center justify-center">
+                                        <i class="pi pi-image text-white text-lg"></i>
+                                      </div>
+                                    `;
+                                  }
+                                }}
+                              />
+                            ) : isExcelFile ? (
+                              <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded flex items-center justify-center">
+                                <i className="pi pi-file-excel text-white text-lg"></i>
+                              </div>
+                            ) : (
+                              <div className="w-10 h-10 bg-gradient-to-br from-gray-400 to-gray-600 rounded flex items-center justify-center">
+                                <i className="pi pi-file text-white text-lg"></i>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Content Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                              <h4 className="text-sm font-medium text-gray-900 truncate pr-2">
+                                {content.name}
+                              </h4>
+                              {isSelected && (
+                                <i className="pi pi-check-circle text-blue-500 flex-shrink-0"></i>
+                              )}
+                            </div>
+                            
+                            <div className="mt-1 space-y-1">
+                              {content.original_filename && (
+                                <p className="text-xs text-gray-500 truncate">
+                                  📄 {content.original_filename}
+                                </p>
+                              )}
+                              
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                                  ${content.is_network_path 
+                                    ? 'bg-orange-100 text-orange-800' 
+                                    : 'bg-blue-100 text-blue-800'
+                                  }
+                                `}>
+                                  <i className={`pi ${content.is_network_path ? 'pi-link' : 'pi-desktop'} text-xs`}></i>
+                                  {content.is_network_path ? 'Network' : 'Local'}
+                                </span>
+                                
+                                {content.file_size && (
+                                  <span className="text-gray-400">
+                                    {formatFileSize(content.file_size)}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {isImageFile && (
+                                <div className="text-xs text-purple-600 font-medium">
+                                  🖼️ Image File
+                                </div>
+                              )}
+                              {isExcelFile && (
+                                <div className="text-xs text-green-600 font-medium">
+                                  📊 Excel File
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <i className="pi pi-inbox text-3xl mb-2 block"></i>
+                  <p>No contents available</p>
+                  <p className="text-sm">Upload some content files first</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Selected Items Summary */}
+            {selectedContentIds.length > 0 && (
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <i className="pi pi-check-circle text-blue-600"></i>
+                  <span className="text-sm font-medium text-blue-800">
+                    {selectedContentIds.length} content{selectedContentIds.length !== 1 ? 's' : ''} selected
                   </span>
                 </div>
-              )}
-              selectedItemTemplate={(option) => (
-                <div className="flex items-center gap-1">
-                  <i className={`pi ${option?.is_network_path ? 'pi-link' : 'pi-file-excel'} text-xs`}></i>
-                  <span>{option?.name || '-'}</span>
+                <div className="flex flex-wrap gap-1">
+                  {contents?.filter(c => selectedContentIds.includes(c.id)).map((content) => (
+                    <span key={content.id} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-200 text-blue-800 text-xs rounded-full">
+                      {content.name}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSelection = contents.filter(c => selectedContentIds.includes(c.id) && c.id !== content.id);
+                          handleContentChange(newSelection);
+                        }}
+                        className="ml-1 hover:text-blue-600"
+                      >
+                        <i className="pi pi-times text-xs"></i>
+                      </button>
+                    </span>
+                  ))}
                 </div>
-              )}
-            />
-            {errors?.content_ids && <p className="text-red-600 text-sm">{errors.content_ids}</p>}
+              </div>
+            )}
+            
+            {errors?.content_ids && <p className="text-red-600 text-sm mt-2">{errors.content_ids}</p>}
           </div>
-
+                </div>
+              </TabPanel>
+            </TabView>
           </form>
         </div>
         

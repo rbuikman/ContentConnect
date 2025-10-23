@@ -51,17 +51,29 @@ class ContentsController extends Controller
             ]);
             
             $filePath = $request->network_path;
+            $mimeType = null; // Network paths don't have MIME type detection
+            $originalFilename = basename($request->network_path);
+            $fileSize = null;
         } else {
             $request->validate([
                 'name' => 'required|string|max:255',
-                'excel_file' => 'required|file|mimes:xlsx,xls|max:10240', // 10MB max
+                'excel_file' => 'required|file|mimes:xlsx,xls,jpg,jpeg,png,gif,bmp,webp,svg|max:10240', // 10MB max - Excel and image files
                 'active' => 'boolean',
             ]);
 
             $filePath = null;
+            $mimeType = null;
+            $originalFilename = null;
+            $fileSize = null;
+            
             if ($request->hasFile('excel_file')) {
                 $file = $request->file('excel_file');
                 $filename = time() . '_' . $file->getClientOriginalName();
+                
+                // Capture file metadata
+                $mimeType = $file->getMimeType();
+                $originalFilename = $file->getClientOriginalName();
+                $fileSize = $file->getSize();
                 
                 // Store in the configured content directory
                 $contentStoragePath = env('CONTENTCONNECT_STORAGE_CONTENT');
@@ -76,7 +88,10 @@ class ContentsController extends Controller
 
         Content::create([
             'name' => $request->name,
-            'excel_file_path' => $filePath,
+            'file_path' => $filePath,
+            'mime_type' => $mimeType,
+            'original_filename' => $originalFilename,
+            'file_size' => $fileSize,
             'is_network_path' => $isNetworkPath,
             'active' => $request->boolean('active', true), // Default to true
             'company_id' => Auth::user()->company_id,
@@ -111,24 +126,27 @@ class ContentsController extends Controller
             ]);
             
             // Delete old file if it was a local file
-            if (!$content->is_network_path && $content->excel_file_path && file_exists($content->excel_file_path)) {
-                unlink($content->excel_file_path);
+            if (!$content->is_network_path && $content->file_path && file_exists($content->file_path)) {
+                unlink($content->file_path);
             }
             
-            $content->excel_file_path = $request->network_path;
+            $content->file_path = $request->network_path;
+            $content->mime_type = null; // Network paths don't have MIME type detection
+            $content->original_filename = null;
+            $content->file_size = null;
             $content->is_network_path = true;
         } else {
             $request->validate([
                 'name' => 'required|string|max:255',
-                'excel_file' => 'nullable|file|mimes:xlsx,xls|max:10240', // 10MB max
+                'excel_file' => 'nullable|file|mimes:xlsx,xls,jpg,jpeg,png,gif,bmp,webp,svg|max:10240', // 10MB max - Excel and image files
                 'active' => 'boolean',
             ]);
 
             // Handle file upload if provided
             if ($request->hasFile('excel_file')) {
                 // Delete old file if exists and it's a local file
-                if (!$content->is_network_path && $content->excel_file_path && file_exists($content->excel_file_path)) {
-                    unlink($content->excel_file_path);
+                if (!$content->is_network_path && $content->file_path && file_exists($content->file_path)) {
+                    unlink($content->file_path);
                 }
 
                 $file = $request->file('excel_file');
@@ -141,7 +159,10 @@ class ContentsController extends Controller
                 }
                 
                 $file->move($contentStoragePath, $filename);
-                $content->excel_file_path = $contentStoragePath . '/' . $filename;
+                $content->file_path = $contentStoragePath . '/' . $filename;
+                $content->mime_type = $file->getMimeType();
+                $content->original_filename = $file->getClientOriginalName();
+                $content->file_size = $file->getSize();
                 $content->is_network_path = false;
             }
         }
@@ -156,24 +177,79 @@ class ContentsController extends Controller
      */
     public function destroy(Content $content)
     {
+        // Ensure the content belongs to the current user's company
+        if ($content->company_id !== auth()->user()->company_id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Check if the content is referenced by any documents
+        if ($content->documents()->exists()) {
+            $documentCount = $content->documents()->count();
+            return response()->json([
+                'error' => "Cannot delete content. It is currently referenced by {$documentCount} document(s). Please remove these references first."
+            ], 422);
+        }
+
+        try {
+            // Get the file path before deleting the record
+            $filePath = $content->file_path;
+            
+            // Delete the content record
+            $content->delete();
+            
+            // If it's a local file path, delete the actual file
+            if ($filePath && strpos($filePath, '\\\\') !== 0) {
+                $fullPath = storage_path('app/' . $filePath);
+                if (file_exists($fullPath)) {
+                    unlink($fullPath);
+                }
+            }
+            
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            \Log::error('Error deleting content: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to delete content'], 500);
+        }
+    }
+
+    /**
+     * Preview/view the file inline (for images)
+     */
+    public function preview(Content $content)
+    {
         // Check company authorization
         $user = Auth::user();
         if ($content->company_id !== $user->company_id) {
             abort(403, 'Unauthorized access to content from another company.');
         }
 
-        // Delete the associated file only if it's a local file (not a network path)
-        if (!$content->is_network_path && $content->excel_file_path && file_exists($content->excel_file_path)) {
-            unlink($content->excel_file_path);
+        if (!$content->file_path) {
+            abort(404, 'No file path specified.');
         }
-
-        $content->delete();
-
-        return redirect()->route('contents.index')->with('success', 'Content deleted successfully.');
+        
+        if ($content->is_network_path) {
+            // For network paths, redirect to the network location
+            return redirect($content->file_path);
+        } else {
+            // For local files, check if exists and serve inline
+            $fullPath = storage_path('app/' . $content->file_path);
+            if (!file_exists($fullPath)) {
+                abort(404, 'File not found.');
+            }
+            
+            // Get the file mime type
+            $mimeType = $content->mime_type ?: mime_content_type($fullPath);
+            
+            // Serve the file inline
+            return response()->file($fullPath, [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'inline'
+            ]);
+        }
     }
 
     /**
-     * Download the Excel file
+     * Download the  file
      */
     public function download(Content $content)
     {
@@ -183,19 +259,19 @@ class ContentsController extends Controller
             abort(403, 'Unauthorized access to content from another company.');
         }
 
-        if (!$content->excel_file_path) {
+        if (!$content->file_path) {
             abort(404, 'No file path specified.');
         }
         
         if ($content->is_network_path) {
             // For network paths, redirect to the network location
-            return redirect($content->excel_file_path);
+            return redirect($content->file_path);
         } else {
             // For local files, check if exists and download
-            if (!file_exists($content->excel_file_path)) {
+            if (!file_exists($content->file_path)) {
                 abort(404, 'File not found.');
             }
-            return response()->download($content->excel_file_path);
+            return response()->download($content->file_path);
         }
     }
 }

@@ -83,6 +83,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/', [\App\Http\Controllers\ContentsController::class, 'store'])->name('contents.store')->middleware('permission:content-create');
             Route::put('/{content}', [\App\Http\Controllers\ContentsController::class, 'update'])->name('contents.update')->middleware('permission:content-edit');
             Route::delete('/{content}', [\App\Http\Controllers\ContentsController::class, 'destroy'])->name('contents.destroy')->middleware('permission:content-delete');
+            Route::get('/preview/{content}', [\App\Http\Controllers\ContentsController::class, 'preview'])->name('contents.preview')->middleware('permission:content-index');
             Route::get('/download/{content}', [\App\Http\Controllers\ContentsController::class, 'download'])->name('contents.download')->middleware('permission:content-index');
     });
 

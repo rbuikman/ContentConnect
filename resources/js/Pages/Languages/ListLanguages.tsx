@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
-import Pagination from "../../Shared/Pagination";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import CreateLanguageModal from "@/Pages/Languages/CreateLanguageModal";
 import EditLanguageModal from "@/Pages/Languages/EditLanguageModal";
@@ -47,10 +46,6 @@ export default function ListLanguages({ languages, filters = {}, companies = [] 
   const handleSearch = (e: React.FormEvent) => {
       e.preventDefault();
       router.get('/languages', { search }, { replace: true });
-  };
-
-  const handlePaginate = (page: number) => {
-      router.get('/languages', { page, search }, { replace: true });
   };
 
   const handleDelete = (id: number) => {
@@ -105,7 +100,6 @@ export default function ListLanguages({ languages, filters = {}, companies = [] 
           <table className="w-full text-sm text-left text-gray-700">
             <thead className="text-xs uppercase bg-gray-100 border-b">
               <tr>
-                <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
                 <th className="px-6 py-3 font-semibold">Code</th>
                 {hasPermission('superadmin') && (
@@ -119,7 +113,6 @@ export default function ListLanguages({ languages, filters = {}, companies = [] 
               {languages.data.length > 0 ? (
                 languages.data.map((language) => (
                   <tr key={language.id} className="border-b hover:bg-gray-50 transition">
-                    <td className="px-6 py-4">{language.id}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{language.name}</td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -173,16 +166,6 @@ export default function ListLanguages({ languages, filters = {}, companies = [] 
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="my-10">
-          <Pagination
-            current_page={languages.current_page}
-            total={languages.total}
-            per_page={languages.per_page}
-            onPaginate={handlePaginate}
-          />
         </div>
 
         {/* Modals */}

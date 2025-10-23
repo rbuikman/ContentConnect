@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { router, usePage } from "@inertiajs/react";
-import Pagination from "../../Shared/Pagination";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import CreateSubCategoryModal from "../../Pages/SubCategories/CreateSubCategoryModal";
 import EditSubCategoryModal from "../../Pages/SubCategories/EditSubCategoryModal";
@@ -47,10 +46,6 @@ export default function ListSubCategories({ subcategories, filters = {}, categor
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     router.get('/subcategories', { search }, { replace: true });
-  };
-
-  const handlePaginate = (page: number) => {
-    router.get('/subcategories', { page, search }, { replace: true });
   };
 
   const handleDelete = (id: number) => {
@@ -133,16 +128,6 @@ export default function ListSubCategories({ subcategories, filters = {}, categor
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="my-10">
-          <Pagination
-            current_page={subcategories.current_page}
-            total={subcategories.total}
-            per_page={subcategories.per_page}
-            onPaginate={handlePaginate}
-          />
         </div>
 
         {/* Modals */}

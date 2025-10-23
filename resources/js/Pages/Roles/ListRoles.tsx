@@ -1,7 +1,6 @@
 // resources/js/Pages/Roles/ListRoles.tsx
 import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
-import Pagination from "../../Shared/Pagination";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import CreateRoleModal from "./CreateRoleModal";
 import EditRoleModal from "./EditRoleModal";
@@ -66,14 +65,6 @@ export default function ListRoles({ roles, permissions, companies = [], filters 
   // Helper function to check if user has permission
   const hasPermission = (permission: string) => {
     return userPermissions.includes(permission);
-  };
-
-  const handlePaginate = (page: number) => {
-    router.get(
-      route("roles.index"),
-      { page, search },
-      { preserveScroll: true, preserveState: true, replace: true }
-    );
   };
 
   const handleDelete = (id: number) => {
@@ -143,7 +134,6 @@ export default function ListRoles({ roles, permissions, companies = [], filters 
           <table className="w-full text-sm text-left text-gray-700">
             <thead className="text-xs uppercase bg-gray-100 border-b">
               <tr>
-                <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
                 <th className="px-6 py-3 font-semibold">Guard</th>
                 {userPermissions.includes('superadmin') && (
@@ -161,7 +151,6 @@ export default function ListRoles({ roles, permissions, companies = [], filters 
                     key={role.id}
                     className="border-b hover:bg-gray-50 transition"
                   >
-                    <td className="px-6 py-4">{role.id}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">
                       {role.name}
                     </td>
@@ -233,16 +222,6 @@ export default function ListRoles({ roles, permissions, companies = [], filters 
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="my-10">
-          <Pagination
-            current_page={filteredRoles.current_page}
-            total={filteredRoles.total}
-            per_page={filteredRoles.per_page}
-            onPaginate={handlePaginate}
-          />
         </div>
 
         {/* Modals */}

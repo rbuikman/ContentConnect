@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
-import Pagination from "../../Shared/Pagination";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import CreateStatusModal from "@/Pages/Statuses/CreateStatusModal";
 import EditStatusModal from "@/Pages/Statuses/EditStatusModal";
@@ -46,10 +45,6 @@ export default function ListStatuses({ statuses, filters = {}, companies = [] }:
   const handleSearch = (e: React.FormEvent) => {
       e.preventDefault();
       router.get('/statuses', { search }, { replace: true });
-  };
-
-  const handlePaginate = (page: number) => {
-      router.get('/statuses', { page, search }, { replace: true });
   };
 
   const handleDelete = (id: number) => {
@@ -104,7 +99,6 @@ export default function ListStatuses({ statuses, filters = {}, companies = [] }:
           <table className="w-full text-sm text-left text-gray-700">
             <thead className="text-xs uppercase bg-gray-100 border-b">
               <tr>
-                <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
                 {hasPermission('superadmin') && (
                   <th className="px-6 py-3 font-semibold">Company</th>
@@ -117,7 +111,6 @@ export default function ListStatuses({ statuses, filters = {}, companies = [] }:
               {statuses.data.length > 0 ? (
                 statuses.data.map((status) => (
                   <tr key={status.id} className="border-b hover:bg-gray-50 transition">
-                    <td className="px-6 py-4">{status.id}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{status.name}</td>
                     {hasPermission('superadmin') && (
                       <td className="px-6 py-4">
@@ -166,16 +159,6 @@ export default function ListStatuses({ statuses, filters = {}, companies = [] }:
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="my-10">
-          <Pagination
-            current_page={statuses.current_page}
-            total={statuses.total}
-            per_page={statuses.per_page}
-            onPaginate={handlePaginate}
-          />
         </div>
 
         {/* Modals */}

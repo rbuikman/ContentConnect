@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
-import Pagination from "../../Shared/Pagination";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import CreateCompanyModal from "@/Pages/Companies/CreateCompanyModal";
 import EditCompanyModal from "@/Pages/Companies/EditCompanyModal";
@@ -40,10 +39,6 @@ export default function ListCompanies({ companies, filters = {} }: ListCompanies
   const handleSearch = (e: React.FormEvent) => {
       e.preventDefault();
       router.get('/companies', { search }, { replace: true });
-  };
-
-  const handlePaginate = (page: number) => {
-      router.get('/companies', { page, search }, { replace: true });
   };
 
   const handleDelete = (id: number) => {
@@ -91,7 +86,6 @@ export default function ListCompanies({ companies, filters = {} }: ListCompanies
           <table className="w-full text-sm text-left text-gray-700">
             <thead className="text-xs uppercase bg-gray-100 border-b">
               <tr>
-                <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Company Name</th>
                 <th className="px-6 py-3 font-semibold">Number of Licences</th>
                 <th className="px-6 py-3 font-semibold">Created</th>
@@ -102,7 +96,6 @@ export default function ListCompanies({ companies, filters = {} }: ListCompanies
               {companies.data.length > 0 ? (
                 companies.data.map((company) => (
                   <tr key={company.id} className="border-b hover:bg-gray-50 transition">
-                    <td className="px-6 py-4">{company.id}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{company.name}</td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -143,16 +136,6 @@ export default function ListCompanies({ companies, filters = {} }: ListCompanies
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="mt-6">
-          <Pagination
-            current_page={companies.current_page}
-            total={companies.total}
-            per_page={companies.per_page}
-            onPaginate={handlePaginate}
-          />
         </div>
 
         {/* Modals */}

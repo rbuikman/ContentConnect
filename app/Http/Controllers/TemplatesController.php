@@ -51,7 +51,7 @@ class TemplatesController extends Controller
             'subcategories' => SubCategory::forCompany($user->company_id)->get(),
             'statuses' => Status::where('active', true)->forCompany($user->company_id)->get(),
             'languages' => Language::where('active', true)->forCompany($user->company_id)->get(),
-            'contents' => \App\Models\Content::where('active', true)->forCompany($user->company_id)->get(['id', 'name', 'excel_file_path', 'is_network_path']),
+            'contents' => \App\Models\Content::where('active', true)->forCompany($user->company_id)->get(),
             'templates' => Document::where('template', true)->where('deleted', false)->forCompany($user->company_id)->with('languages')->get(['id', 'file_name', 'category_id', 'sub_category_id']),
             'template' => true, // Pass template parameter for templates
             'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config

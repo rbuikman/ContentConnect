@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
-import Pagination from "../../Shared/Pagination";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import CreateCategoryModal from "./CreateCategoryModal";
 import EditCategoryModal from "./EditCategoryModal";
@@ -46,10 +45,6 @@ export default function ListCategories({ categories, companies = [], filters = {
   const handleSearch = (e: React.FormEvent) => {
       e.preventDefault();
       router.get('/categories', { search }, { replace: true });
-  };
-
-  const handlePaginate = (page: number) => {
-      router.get('/categories', { page, search }, { replace: true });
   };
 
   const handleDelete = (id: number) => {
@@ -104,7 +99,6 @@ export default function ListCategories({ categories, companies = [], filters = {
           <table className="w-full text-sm text-left text-gray-700">
             <thead className="text-xs uppercase bg-gray-100 border-b">
               <tr>
-                <th className="px-6 py-3 font-semibold">#</th>
                 <th className="px-6 py-3 font-semibold">Name</th>
                 {hasPermission('superadmin') && (
                   <th className="px-6 py-3 font-semibold">Company</th>
@@ -117,7 +111,6 @@ export default function ListCategories({ categories, companies = [], filters = {
               {categories.data.length > 0 ? (
                 categories.data.map((category) => (
                   <tr key={category.id} className="border-b hover:bg-gray-50 transition">
-                    <td className="px-6 py-4">{category.id}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{category.name}</td>
                     {hasPermission('superadmin') && (
                       <td className="px-6 py-4">
@@ -166,16 +159,6 @@ export default function ListCategories({ categories, companies = [], filters = {
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="my-10">
-          <Pagination
-            current_page={categories.current_page}
-            total={categories.total}
-            per_page={categories.per_page}
-            onPaginate={handlePaginate}
-          />
         </div>
 
         {/* Modals */}

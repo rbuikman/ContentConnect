@@ -13,7 +13,7 @@ interface CreateContentModalProps {
 
 const CreateContentModal: React.FC<CreateContentModalProps> = ({ onClose }) => {
     const [name, setName] = useState("");
-    const [excelFile, setExcelFile] = useState<File | null>(null);
+    const [file, setFile] = useState<File | null>(null);
     const [networkPath, setNetworkPath] = useState("");
     const [pathType, setPathType] = useState<"upload" | "network">("upload");
     const [active, setActive] = useState(true);
@@ -36,8 +36,8 @@ const CreateContentModal: React.FC<CreateContentModalProps> = ({ onClose }) => {
             return;
         }
 
-        if (pathType === "upload" && !excelFile) {
-            setErrors({ excel_file: "Excel file is required" });
+        if (pathType === "upload" && !file) {
+            setErrors({ excel_file: "File is required" });
             setLoading(false);
             return;
         }
@@ -53,8 +53,8 @@ const CreateContentModal: React.FC<CreateContentModalProps> = ({ onClose }) => {
         formData.append('is_network_path', pathType === "network" ? "1" : "0");
         formData.append('active', active ? "1" : "0");
         
-        if (pathType === "upload" && excelFile) {
-            formData.append('excel_file', excelFile);
+        if (pathType === "upload" && file) {
+            formData.append('excel_file', file);
         } else if (pathType === "network") {
             formData.append('network_path', networkPath);
         }
@@ -75,12 +75,12 @@ const CreateContentModal: React.FC<CreateContentModalProps> = ({ onClose }) => {
     const onFileSelect = (e: any) => {
         const files = e.files;
         if (files && files.length > 0) {
-            setExcelFile(files[0]);
+            setFile(files[0]);
         }
     };
 
     const onFileRemove = () => {
-        setExcelFile(null);
+        setFile(null);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -145,18 +145,18 @@ const CreateContentModal: React.FC<CreateContentModalProps> = ({ onClose }) => {
                 {pathType === "upload" ? (
                     <div className="field">
                         <label htmlFor="excel_file" className="block text-sm font-medium text-gray-700 mb-2">
-                            Excel File <span className="text-red-500">*</span>
+                            File (Excel or Image) <span className="text-red-500">*</span>
                         </label>
                         <FileUpload
                             name="excel_file"
-                            accept=".xlsx,.xls"
+                            accept=".xlsx,.xls,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
                             maxFileSize={10485760} // 10MB
                             customUpload
                             uploadHandler={onFileSelect}
                             onRemove={onFileRemove}
                             onClear={onFileRemove}
                             auto
-                            chooseLabel="Choose Excel File"
+                            chooseLabel="Choose File (Excel or Image)"
                             uploadLabel=""
                             cancelLabel=""
                             className={errors.excel_file ? "p-invalid" : ""}
@@ -172,7 +172,7 @@ const CreateContentModal: React.FC<CreateContentModalProps> = ({ onClose }) => {
                             id="network_path"
                             value={networkPath}
                             onChange={(e) => setNetworkPath(e.target.value)}
-                            placeholder="Enter network path (e.g., //server/share/file.xlsx or \\server\share\file.xlsx)"
+                            placeholder="Enter network path (e.g., //server/share/file.xlsx or //server/share/image.jpg)"
                             className={errors.network_path ? "p-invalid" : ""}
                         />
                         {errors.network_path && <small className="p-error">{errors.network_path}</small>}
@@ -191,7 +191,7 @@ const CreateContentModal: React.FC<CreateContentModalProps> = ({ onClose }) => {
                         type="submit"
                         label="Create Content" 
                         loading={loading}
-                        disabled={!name.trim() || (pathType === "upload" && !excelFile) || (pathType === "network" && !networkPath.trim())}
+                        disabled={!name.trim() || (pathType === "upload" && !file) || (pathType === "network" && !networkPath.trim())}
                     />
                 </div>
             </form>

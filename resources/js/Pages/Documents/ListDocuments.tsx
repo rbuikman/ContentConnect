@@ -55,8 +55,16 @@ interface Template {
 interface Content {
   id: number;
   name: string;
-  excel_file_path: string | null;
+  file_path: string | null;
+  mime_type: string | null;
+  original_filename: string | null;
+  file_size: number | null;
   is_network_path: boolean;
+  active: boolean;
+  created_by: string;
+  modified_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Document {
@@ -703,32 +711,37 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         return (
 
             <div className="flex justify-between items-center">
-              {template ? (
-                <button
-                  onClick={() => {
-                    router.post('/templates/read-from-storage', {}, {
-                      onSuccess: () => {
-                        // Template import completed successfully
-                      },
-                      onError: (errors) => {
-                        console.error('Error reading templates from storage:', errors);
-                      }
-                    });
-                  }}
-                  className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
-                >
-                  Update Templates from storage
-                </button>
-              ) : (
-                hasPermission('document-create') && (
+              <div className="flex items-center gap-4">
+                {template ? (
                   <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+                    onClick={() => {
+                      router.post('/templates/read-from-storage', {}, {
+                        onSuccess: () => {
+                          // Template import completed successfully
+                        },
+                        onError: (errors) => {
+                          console.error('Error reading templates from storage:', errors);
+                        }
+                      });
+                    }}
+                    className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
                   >
-                    Create&nbsp;Document
+                    Update Templates from storage
                   </button>
-                )
-              )}
+                ) : (
+                  hasPermission('document-create') && (
+                    <button
+                      onClick={() => setShowCreateModal(true)}
+                      className="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5 shadow transition"
+                    >
+                      Create&nbsp;Document
+                    </button>
+                  )
+                )}
+                <div className="text-sm text-gray-600 font-medium">
+                  Total: {documents.total} {template ? 'template' : 'document'}{documents.total !== 1 ? 's' : ''}
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <div className="relative w-64">
                     <InputText 
@@ -797,6 +810,15 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         });
     };
 
+    // Helper function to format file size
+    const formatFileSize = (bytes: number): string => {
+        if (bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const k = 1024;
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + units[i];
+    };
+
     const dateBodyTemplate = (rowData: Document) => {
         return formatDate(new Date(rowData.modified_at!));
     };
@@ -856,6 +878,90 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                         </div>
                     </div>
                 </div>
+
+                {/* Associated Content Section */}
+                {data.contents && data.contents.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-3">Associated Content</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {data.contents.map((content: Content) => {
+                                const isExcelFile = content.mime_type?.includes('spreadsheet') || content.mime_type?.includes('excel');
+                                const isImageFile = content.mime_type?.startsWith('image/');
+                                
+                                return (
+                                    <div key={content.id} className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg bg-white">
+                                        {/* Thumbnail/Icon */}
+                                        <div className={`flex-shrink-0 flex items-center justify-center rounded-lg bg-gray-100 overflow-hidden ${
+                                            isImageFile && content.file_path ? 'w-12 h-12' : 'w-10 h-10'
+                                        }`}>
+                                            {isImageFile && content.file_path ? (
+                                                <img 
+                                                    src={`/contents/preview/${content.id}`}
+                                                    alt={content.name}
+                                                    className="w-full h-full object-cover rounded-lg"
+                                                    onError={(e) => {
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.style.display = 'none';
+                                                        const parent = target.parentElement;
+                                                        if (parent) {
+                                                            parent.className = 'flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-gray-100';
+                                                            parent.innerHTML = `
+                                                                <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded flex items-center justify-center">
+                                                                    <i class="pi pi-image text-white text-sm"></i>
+                                                                </div>
+                                                            `;
+                                                        }
+                                                    }}
+                                                />
+                                            ) : isExcelFile ? (
+                                                <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded flex items-center justify-center">
+                                                    <i className="pi pi-file-excel text-white text-sm"></i>
+                                                </div>
+                                            ) : (
+                                                <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-600 rounded flex items-center justify-center">
+                                                    <i className="pi pi-file text-white text-sm"></i>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Content Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <h5 className="text-sm font-medium text-gray-900 truncate">{content.name}</h5>
+                                            
+                                            {content.original_filename && (
+                                                <p className="text-xs text-gray-500 truncate">📄 {content.original_filename}</p>
+                                            )}
+                                            
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                    content.is_network_path 
+                                                        ? 'bg-orange-100 text-orange-800' 
+                                                        : 'bg-blue-100 text-blue-800'
+                                                }`}>
+                                                    <i className={`pi ${content.is_network_path ? 'pi-link' : 'pi-desktop'} text-xs`}></i>
+                                                    {content.is_network_path ? 'Network' : 'Local'}
+                                                </span>
+                                                
+                                                {content.file_size && (
+                                                    <span className="text-xs text-gray-400">
+                                                        {formatFileSize(content.file_size)}
+                                                    </span>
+                                                )}
+                                                
+                                                {isImageFile && (
+                                                    <span className="text-xs text-purple-600 font-medium">🖼️ Image</span>
+                                                )}
+                                                {isExcelFile && (
+                                                    <span className="text-xs text-green-600 font-medium">📊 Excel</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* Large Thumbnail Section */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
@@ -1068,7 +1174,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           currentPageReportTemplate="Showing {first} to {last} of {totalRecords} documents" 
         >
         {/*}  <Column field="id" header="ID" sortable filter filterPlaceholder="Search by ID" style={{ minWidth: '12rem' }}></Column> */}
-          <Column expander={true} style={{ width: '3rem' }} />
+          <Column expander={true} style={{ width: '3rem', minWidth: '3rem', maxWidth: '3rem' }} />
           {visibleColumns.some(col => col.field === 'thumbnail') && (
             <Column 
               field="thumbnail" 

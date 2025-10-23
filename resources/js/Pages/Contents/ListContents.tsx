@@ -19,7 +19,10 @@ import EditContentModal from "@/Pages/Contents/EditContentModal";
 interface Content {
   id: number;
   name: string;
-  excel_file_path: string | null;
+  file_path: string | null;
+  mime_type: string | null;
+  original_filename: string | null;
+  file_size: number | null;
   is_network_path: boolean;
   active: boolean;
   created_by: string;
@@ -142,7 +145,6 @@ const ListContents: React.FC<ListContentsProps> = ({ contents }) => {
                     </button>
                 )}
                 <IconField iconPosition="right" className="w-64">
-                    <InputIcon className="pi pi-search" />
                     <InputText 
                         type="search" 
                         value={globalFilterValue || ''} 
@@ -202,20 +204,64 @@ const ListContents: React.FC<ListContentsProps> = ({ contents }) => {
     };
 
     const fileBodyTemplate = (rowData: Content) => {
-        if (rowData.excel_file_path) {
+        if (rowData.file_path) {
+            const getFileTypeIcon = () => {
+                if (!rowData.mime_type) return "pi pi-file";
+                
+                if (rowData.mime_type.startsWith('image/')) return "pi pi-image";
+                if (rowData.mime_type.includes('spreadsheet') || rowData.mime_type.includes('excel')) return "pi pi-table";
+                return "pi pi-file";
+            };
+
+            const getFileTypeLabel = () => {
+                if (!rowData.mime_type) return "Unknown";
+                
+                if (rowData.mime_type.startsWith('image/')) return "Image";
+                if (rowData.mime_type.includes('spreadsheet') || rowData.mime_type.includes('excel')) return "Excel";
+                return "File";
+            };
+
+            const formatFileSize = (bytes: number | null) => {
+                if (!bytes) return "";
+                const units = ['B', 'KB', 'MB', 'GB'];
+                let size = bytes;
+                let unitIndex = 0;
+                
+                while (size > 1024 && unitIndex < units.length - 1) {
+                    size /= 1024;
+                    unitIndex++;
+                }
+                
+                return `${Math.round(size * 100) / 100} ${units[unitIndex]}`;
+            };
+
             return (
                 <div className="flex items-center gap-2">
-                    <Button
-                        icon={rowData.is_network_path ? "pi pi-external-link" : "pi pi-download"}
-                        className="p-button-sm p-button-outlined"
-                        onClick={() => window.open(`/contents/download/${rowData.id}`, '_blank')}
-                        tooltip={rowData.is_network_path ? "Open network path" : "Download file"}
-                        tooltipOptions={{ position: "top" }}
-                        severity="help"
-                    />
-                    <span className="text-xs text-gray-500">
-                        {rowData.is_network_path ? "Network" : "Local"}
-                    </span>
+                    <i className={`${getFileTypeIcon()} text-blue-500`}></i>
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                            <Button
+                                icon={rowData.is_network_path ? "pi pi-external-link" : "pi pi-download"}
+                                className="p-button-sm p-button-outlined"
+                                onClick={() => window.open(`/contents/download/${rowData.id}`, '_blank')}
+                                tooltip={rowData.is_network_path ? "Open network path" : "Download file"}
+                                tooltipOptions={{ position: "top" }}
+                                severity="help"
+                            />
+                            <span className="text-xs text-gray-500">
+                                {rowData.is_network_path ? "Network" : "Local"}
+                            </span>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                            {getFileTypeLabel()}
+                            {rowData.file_size && ` • ${formatFileSize(rowData.file_size)}`}
+                            {rowData.original_filename && !rowData.is_network_path && (
+                                <div className="truncate max-w-[200px]" title={rowData.original_filename}>
+                                    {rowData.original_filename}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             );
         }
@@ -298,10 +344,25 @@ const ListContents: React.FC<ListContentsProps> = ({ contents }) => {
     const handleDelete = (id: number) => {
         router.delete(`/contents/${id}`, {
             onSuccess: () => {
-                console.log(`Content with ID ${id} deleted successfully.`);
+                toast.current?.show({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'Content deleted successfully.',
+                    life: 3000
+                });
             },
             onError: (errors) => {
                 console.error(`Error deleting content with ID ${id}:`, errors);
+                
+                // Check if it's a validation error (422) with a specific message
+                const errorMessage = errors?.message || errors?.error || 'Failed to delete content. Please try again.';
+                
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Delete Failed',
+                    detail: errorMessage,
+                    life: 5000
+                });
             }
         });
     };
@@ -355,7 +416,7 @@ const ListContents: React.FC<ListContentsProps> = ({ contents }) => {
                     currentPageReportTemplate="Showing {first} to {last} of {totalRecords} contents" 
                 >
                     <Column field="name" header="Name" filter sortable filterPlaceholder="" style={{ minWidth: '12rem' }}></Column>
-                    <Column body={fileBodyTemplate} header="Excel File" style={{ minWidth: '8rem', textAlign: 'center' }}></Column>
+                    <Column body={fileBodyTemplate} header="File" style={{ minWidth: '8rem', textAlign: 'center' }}></Column>
                     <Column body={activeBodyTemplate} header="Active" style={{ minWidth: '6rem', textAlign: 'center' }}></Column>
                     <Column field="created_by" header="Created By" sortable style={{ minWidth: '10rem' }}></Column>
                     <Column field="updated_at" body={dateBodyTemplate} header="Last Modified" sortable style={{ minWidth: '12rem' }}></Column>

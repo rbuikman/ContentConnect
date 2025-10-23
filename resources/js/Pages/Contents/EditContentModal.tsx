@@ -10,7 +10,10 @@ import { router } from "@inertiajs/react";
 interface Content {
     id: number;
     name: string;
-    excel_file_path: string | null;
+    file_path: string | null;
+    mime_type: string | null;
+    original_filename: string | null;
+    file_size: number | null;
     is_network_path: boolean;
     active: boolean;
     created_by: string;
@@ -26,8 +29,8 @@ interface EditContentModalProps {
 
 const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose }) => {
     const [name, setName] = useState(content.name);
-    const [excelFile, setExcelFile] = useState<File | null>(null);
-    const [networkPath, setNetworkPath] = useState(content.is_network_path ? content.excel_file_path || "" : "");
+    const [file, setFile] = useState<File | null>(null);
+    const [networkPath, setNetworkPath] = useState(content.is_network_path ? content.file_path || "" : "");
     const [pathType, setPathType] = useState<"upload" | "network">(content.is_network_path ? "network" : "upload");
     const [active, setActive] = useState(content.active);
     const [loading, setLoading] = useState(false);
@@ -61,8 +64,8 @@ const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose })
         formData.append('is_network_path', pathType === "network" ? "1" : "0");
         formData.append('active', active ? "1" : "0");
         
-        if (pathType === "upload" && excelFile) {
-            formData.append('excel_file', excelFile);
+        if (pathType === "upload" && file) {
+            formData.append('excel_file', file);
         } else if (pathType === "network") {
             formData.append('network_path', networkPath);
         }
@@ -83,12 +86,12 @@ const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose })
     const onFileSelect = (e: any) => {
         const files = e.files;
         if (files && files.length > 0) {
-            setExcelFile(files[0]);
+            setFile(files[0]);
         }
     };
 
     const onFileRemove = () => {
-        setExcelFile(null);
+        setFile(null);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -97,12 +100,12 @@ const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose })
         }
     };
 
-    const hasExistingFile = content.excel_file_path !== null;
-    const fileName = hasExistingFile && content.excel_file_path && !content.is_network_path
-        ? content.excel_file_path.split('/').pop() 
+    const hasExistingFile = content.file_path !== null;
+    const fileName = hasExistingFile && content.file_path && !content.is_network_path
+        ? content.original_filename || content.file_path.split('/').pop() 
         : null;
-    const networkFileName = hasExistingFile && content.excel_file_path && content.is_network_path
-        ? content.excel_file_path.split(/[/\\]/).pop()
+    const networkFileName = hasExistingFile && content.file_path && content.is_network_path
+        ? content.file_path.split(/[/\\]/).pop()
         : null;
 
     return (
@@ -161,7 +164,7 @@ const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose })
                     {pathType === "upload" ? (
                         <div className="field">
                             <label htmlFor="excel_file" className="block text-sm font-medium text-gray-700 mb-2">
-                                Excel File {hasExistingFile && !content.is_network_path && "(optional - leave empty to keep current file)"}
+                                File (Excel or Image) {hasExistingFile && !content.is_network_path && "(optional - leave empty to keep current file)"}
                             </label>
                             
                             {hasExistingFile && !content.is_network_path && (
@@ -184,14 +187,14 @@ const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose })
 
                             <FileUpload
                                 name="excel_file"
-                                accept=".xlsx,.xls"
+                                accept=".xlsx,.xls,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
                                 maxFileSize={10485760} // 10MB
                                 customUpload
                                 uploadHandler={onFileSelect}
                                 onRemove={onFileRemove}
                                 onClear={onFileRemove}
                                 auto
-                                chooseLabel={hasExistingFile && !content.is_network_path ? "Replace Excel File" : "Choose Excel File"}
+                                chooseLabel={hasExistingFile && !content.is_network_path ? "Replace File" : "Choose File (Excel or Image)"}
                                 uploadLabel=""
                                 cancelLabel=""
                                 className={errors.excel_file ? "p-invalid" : ""}
@@ -226,7 +229,7 @@ const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose })
                                 id="network_path"
                                 value={networkPath}
                                 onChange={(e) => setNetworkPath(e.target.value)}
-                                placeholder="Enter network path (e.g., //server/share/file.xlsx or \\server\share\file.xlsx)"
+                                placeholder="Enter network path (e.g., //server/share/file.xlsx or //server/share/image.jpg)"
                                 className={errors.network_path ? "p-invalid" : ""}
                             />
                             {errors.network_path && <small className="p-error">{errors.network_path}</small>}
