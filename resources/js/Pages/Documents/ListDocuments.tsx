@@ -885,6 +885,64 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         );
     };
 
+    // Handle file download with proper error handling
+    const handleDownload = async (documentId: number, fileName: string) => {
+        try {
+            const downloadUrl = `/${template ? 'templates' : 'documents'}/download/${documentId}`;
+            const response = await fetch(downloadUrl);
+            
+            if (!response.ok) {
+                let errorMessage = 'Download failed';
+                
+                if (response.status === 404) {
+                    errorMessage = 'File not found. The document may have been moved or deleted.';
+                } else if (response.status === 403) {
+                    errorMessage = 'Access denied. You do not have permission to download this file, or the file is not accessible due to server permissions.';
+                } else if (response.status === 500) {
+                    errorMessage = 'Server error occurred while trying to download the file.';
+                } else {
+                    errorMessage = `Download failed with status ${response.status}`;
+                }
+                
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Download Error',
+                    detail: errorMessage,
+                    life: 5000
+                });
+                return;
+            }
+            
+            // Get the file blob and create a download link
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName || 'download';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            
+            // Show success message
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Download Started',
+                detail: `${fileName} download has started`,
+                life: 3000
+            });
+            
+        } catch (error) {
+            console.error('Download error:', error);
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Download Error',
+                detail: 'An unexpected error occurred while downloading the file. Please try again.',
+                life: 5000
+            });
+        }
+    };
+
     const openUrlTemplate = (rowData: Document) => {
         return (
           <div>
@@ -900,7 +958,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 label=""
                 icon="pi pi-download"
                 className="p-button-sm p-button-outlined"
-                onClick={() => window.open(`/${template ? 'templates' : 'documents'}/download/${rowData.id}`, '_blank')}
+                onClick={() => handleDownload(rowData.id, rowData.file_name)}
             />
             </div>
         );
@@ -1089,7 +1147,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           <Button
             icon="pi pi-download"
             className="p-button-rounded p-button-outlined"
-            onClick={() => window.open(`/${template ? 'templates' : 'documents'}/download/${rowData.id}`, '_blank')}
+            onClick={() => handleDownload(rowData.id, rowData.file_name)}
             tooltipOptions={{ position: "top" }}
             severity="help"
           />

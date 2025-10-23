@@ -452,8 +452,8 @@ class DocumentsController extends Controller
             abort(404, 'Document file not found.');
         }
         
-        // Return the file for download
-        return response()->download($filePath, basename($filePath));
+        // Use the safe file download helper with enhanced error handling
+        return $this->safeFileDownload($filePath, basename($filePath));
     }
 }
 
