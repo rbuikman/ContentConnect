@@ -730,10 +730,15 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                 )
               )}
               <div className="flex items-center gap-2">
-                <IconField iconPosition="right" className="w-64">
-                    <InputIcon className="pi pi-search"  />
-                    <InputText type="search" value={globalFilterValue || ''} onChange={(e) => onGlobalFilterChange(e)} placeholder="Search" className="text-sm" />
-                </IconField>
+                <div className="relative w-64">
+                    <InputText 
+                        type="search" 
+                        value={globalFilterValue || ''} 
+                        onChange={(e) => onGlobalFilterChange(e)} 
+                        placeholder="Search" 
+                        className="text-sm pl-10 w-full" 
+                    />
+                </div>
                 <Button
                   icon="pi pi-bars"
                   className="p-button-rounded p-button-outlined p-button-sm"
