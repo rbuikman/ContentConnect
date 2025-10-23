@@ -13,6 +13,7 @@ interface Status {
   active: boolean;
   company_id: number;
   company?: Company;
+  sortorder: number;
 }
 
 interface EditStatusProps {
@@ -25,6 +26,7 @@ interface FormDataShape {
   name: string;
   active: boolean;
   company_id?: number;
+  sortorder: number;
 }
 
 export default function EditStatusModal({ status, onClose, companies = [] }: EditStatusProps) {
@@ -41,6 +43,7 @@ export default function EditStatusModal({ status, onClose, companies = [] }: Edi
     name: status.name,
     active: status.active,
     company_id: status.company_id,
+    sortorder: status.sortorder ?? 0,
   });
 
   // Update form if status changes
@@ -49,6 +52,7 @@ export default function EditStatusModal({ status, onClose, companies = [] }: Edi
       name: status.name,
       active: status.active,
       company_id: status.company_id,
+      sortorder: status.sortorder ?? 0,
     });
   }, [status]);
 
@@ -63,6 +67,14 @@ export default function EditStatusModal({ status, onClose, companies = [] }: Edi
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type } = e.target;
+    setForm(prev => ({
+      ...prev,
+      [name]: type === 'number' ? Number(value) : value
+    }));
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,11 +106,28 @@ export default function EditStatusModal({ status, onClose, companies = [] }: Edi
             <input
               type="text"
               id="name"
+              name="name"
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
             {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
+          </div>
+          <div className="mb-4">
+            <label htmlFor="sortorder" className="block text-sm font-medium text-gray-700">
+              Sort Order
+            </label>
+            <input
+              type="number"
+              id="sortorder"
+              name="sortorder"
+              value={form.sortorder}
+              onChange={handleChange}
+              min={0}
+              required
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+            {errors.sortorder && <div className="text-red-500 text-sm mt-1">{errors.sortorder}</div>}
           </div>
 
           {/* Company Selection - Only visible to SuperAdmin users */}

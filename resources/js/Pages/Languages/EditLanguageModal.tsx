@@ -11,6 +11,7 @@ interface Language {
   id: number;
   name: string;
   code: string;
+  sortorder: number;
   active: boolean;
   company_id: number;
   company?: Company;
@@ -25,6 +26,7 @@ interface EditLanguageProps {
 interface FormDataShape {
   name: string;
   code: string;
+  sortorder: number;
   active: boolean;
   company_id?: number;
 }
@@ -42,6 +44,7 @@ export default function EditLanguageModal({ language, companies = [], onClose }:
   const [form, setForm] = useState<FormDataShape>({
     name: language.name,
     code: language.code,
+    sortorder: language.sortorder ?? 0,
     active: language.active,
     company_id: language.company_id,
   });
@@ -51,6 +54,7 @@ export default function EditLanguageModal({ language, companies = [], onClose }:
     setForm({
       name: language.name,
       code: language.code,
+      sortorder: language.sortorder ?? 0,
       active: language.active,
       company_id: language.company_id,
     });
@@ -91,6 +95,7 @@ export default function EditLanguageModal({ language, companies = [], onClose }:
           </button>
         </div>
         <form onSubmit={handleSubmit}>
+          
           <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700">
               Name
@@ -104,6 +109,24 @@ export default function EditLanguageModal({ language, companies = [], onClose }:
               placeholder="e.g., English, Dutch, French"
             />
             {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="sortorder" className="block text-sm font-medium text-gray-700">
+              Sortorder
+            </label>
+            <input
+              type="number"
+              id="sortorder"
+              name="sortorder"
+              value={form.sortorder}
+              min={0}
+              required
+              onChange={e => setForm(prev => ({ ...prev, sortorder: Number(e.target.value) }))}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              placeholder="e.g., 0, 1, 2"
+            />
+            {errors.sortorder && <div className="text-red-500 text-sm mt-1">{errors.sortorder}</div>}
           </div>
           
           <div className="mb-4">

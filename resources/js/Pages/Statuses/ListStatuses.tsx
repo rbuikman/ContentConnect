@@ -15,6 +15,7 @@ interface Status {
   active: boolean;
   company_id: number;
   company?: Company;
+  sortorder: number;
 }
 
 interface StatusesData {
@@ -100,6 +101,7 @@ export default function ListStatuses({ statuses, filters = {}, companies = [] }:
             <thead className="text-xs uppercase bg-gray-100 border-b">
               <tr>
                 <th className="px-6 py-3 font-semibold">Name</th>
+                <th className="px-6 py-3 font-semibold text-center">Sort Order</th>
                 {hasPermission('superadmin') && (
                   <th className="px-6 py-3 font-semibold">Company</th>
                 )}
@@ -112,6 +114,7 @@ export default function ListStatuses({ statuses, filters = {}, companies = [] }:
                 statuses.data.map((status) => (
                   <tr key={status.id} className="border-b hover:bg-gray-50 transition">
                     <td className="px-6 py-4 font-medium text-gray-900">{status.name}</td>
+                    <td className="px-6 py-4 text-center">{status.sortorder}</td>
                     {hasPermission('superadmin') && (
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

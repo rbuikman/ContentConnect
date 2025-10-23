@@ -15,6 +15,7 @@ interface CreateLanguageProps {
 interface FormDataShape {
   name: string;
   code: string;
+  sortorder: number;
   active: boolean;
   company_id?: number;
 }
@@ -32,6 +33,7 @@ export default function CreateLanguageModal({ onClose, companies = [] }: CreateL
   const [form, setForm] = useState<FormDataShape>({
     name: "",
     code: "",
+    sortorder: 0,
     active: true,
     company_id: companies.length > 0 ? companies[0]?.id : undefined,
   });
@@ -94,7 +96,25 @@ export default function CreateLanguageModal({ onClose, companies = [] }: CreateL
             />
             {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
           </div>
-          
+
+          <div className="mb-4">
+            <label htmlFor="sortorder" className="block text-sm font-medium text-gray-700">
+              Sortorder
+            </label>
+            <input
+              type="number"
+              id="sortorder"
+              name="sortorder"
+              value={form.sortorder}
+              min={0}
+              required
+              onChange={e => setForm(prev => ({ ...prev, sortorder: Number(e.target.value) }))}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              placeholder="e.g., 0, 1, 2"
+            />
+            {errors.sortorder && <div className="text-red-500 text-sm mt-1">{errors.sortorder}</div>}
+          </div>
+
           <div className="mb-4">
             <label htmlFor="code" className="block text-sm font-medium text-gray-700">
               Code

@@ -15,6 +15,7 @@ interface Category {
   active: boolean;
   company_id: number;
   company?: Company;
+  sortorder: number;
 }
 
 interface CategoriesData {
@@ -100,6 +101,7 @@ export default function ListCategories({ categories, companies = [], filters = {
             <thead className="text-xs uppercase bg-gray-100 border-b">
               <tr>
                 <th className="px-6 py-3 font-semibold">Name</th>
+                <th className="px-6 py-3 font-semibold text-center">Sort Order</th>
                 {hasPermission('superadmin') && (
                   <th className="px-6 py-3 font-semibold">Company</th>
                 )}
@@ -112,6 +114,7 @@ export default function ListCategories({ categories, companies = [], filters = {
                 categories.data.map((category) => (
                   <tr key={category.id} className="border-b hover:bg-gray-50 transition">
                     <td className="px-6 py-4 font-medium text-gray-900">{category.name}</td>
+                    <td className="px-6 py-4 text-center">{category.sortorder}</td>
                     {hasPermission('superadmin') && (
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

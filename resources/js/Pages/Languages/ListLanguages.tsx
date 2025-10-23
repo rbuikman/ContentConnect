@@ -16,6 +16,7 @@ interface Language {
   active: boolean;
   company_id: number;
   company?: Company;
+  sortorder: number;
 }
 
 interface LanguagesData {
@@ -102,6 +103,7 @@ export default function ListLanguages({ languages, filters = {}, companies = [] 
               <tr>
                 <th className="px-6 py-3 font-semibold">Name</th>
                 <th className="px-6 py-3 font-semibold">Code</th>
+                <th className="px-6 py-3 font-semibold">Sortorder</th>
                 {hasPermission('superadmin') && (
                   <th className="px-6 py-3 font-semibold">Company</th>
                 )}
@@ -119,6 +121,7 @@ export default function ListLanguages({ languages, filters = {}, companies = [] 
                         {language.code}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-right">{language.sortorder ?? 0}</td>
                     {hasPermission('superadmin') && (
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

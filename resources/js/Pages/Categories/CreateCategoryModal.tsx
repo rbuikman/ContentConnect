@@ -16,6 +16,7 @@ interface FormDataShape {
   name: string;
   active: boolean;
   company_id?: number;
+  sortorder: number;
 }
 
 export default function CreateCategoryModal({ onClose, companies = [] }: CreateCategoryProps) {
@@ -32,6 +33,7 @@ export default function CreateCategoryModal({ onClose, companies = [] }: CreateC
     name: "",
     active: true,
     company_id: companies.length > 0 ? companies[0]?.id : undefined,
+    sortorder: 0,
   });
 
   // Handle Escape key to close modal
@@ -47,8 +49,12 @@ export default function CreateCategoryModal({ onClose, companies = [] }: CreateC
   }, [onClose]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+    const { name, value, type } = e.target;
+    setForm(prev => ({
+      ...prev,
+      [name]: type === 'number' ? Number(value) : value
+    }));
+  }
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.checked }));
@@ -90,6 +96,22 @@ export default function CreateCategoryModal({ onClose, companies = [] }: CreateC
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
             {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
+          </div>
+          <div className="mb-4">
+            <label htmlFor="sortorder" className="block text-sm font-medium text-gray-700">
+              Sort Order
+            </label>
+            <input
+              type="number"
+              id="sortorder"
+              name="sortorder"
+              value={form.sortorder}
+              onChange={handleChange}
+              min={0}
+              required
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+            {errors.sortorder && <div className="text-red-500 text-sm mt-1">{errors.sortorder}</div>}
           </div>
           
           {/* Company Selection - Only visible to SuperAdmin users */}
