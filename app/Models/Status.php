@@ -10,7 +10,7 @@ class Status extends Model
 {
     use HasFactory;
 
-    protected $fillable = [ 'company_id', 'name', 'active'];
+    protected $fillable = [ 'company_id', 'name', 'active', 'sortorder'];
 
     protected $casts = [
         'active' => 'boolean',

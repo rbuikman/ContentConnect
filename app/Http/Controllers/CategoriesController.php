@@ -26,7 +26,7 @@ class CategoriesController extends Controller
         }
 
         $categories = $query
-            ->orderBy('name')
+            ->orderBy('sortorder')
             ->paginate(env('ITEMLIST_COUNT', 50))->withQueryString();
 
         $companies = [];

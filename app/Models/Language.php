@@ -9,7 +9,7 @@ class Language extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['company_id', 'name', 'code', 'active'];
+    protected $fillable = ['company_id', 'name', 'code', 'active', 'sortorder'];
 
     protected $casts = [
         'active' => 'boolean',

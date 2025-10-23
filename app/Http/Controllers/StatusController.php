@@ -25,7 +25,7 @@ class StatusController extends Controller
         }
 
         $statuses = $query
-            ->orderBy('name')
+            ->orderBy('sortorder')
             ->paginate(env('ITEMLIST_COUNT', 50))->withQueryString();
 
         // Get companies for SuperAdmin users

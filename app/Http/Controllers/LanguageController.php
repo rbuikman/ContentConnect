@@ -26,7 +26,7 @@ class LanguageController extends Controller
         }
 
         $languages = $query
-            ->orderBy('name')
+            ->orderBy('sortorder')
             ->paginate(env('ITEMLIST_COUNT', 50))->withQueryString();
 
         // Get companies for SuperAdmin users
