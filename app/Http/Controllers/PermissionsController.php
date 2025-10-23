@@ -11,7 +11,7 @@ class PermissionsController extends Controller
 {
     public function index()
     {
-        $permissions = Permission::paginate(10);
+        $permissions = Permission::paginate(perPage: env('ITEMLIST_COUNT', 50));
 
         return Inertia::render('permissions/index', [
             'permissions' => $permissions

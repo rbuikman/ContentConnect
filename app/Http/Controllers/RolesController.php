@@ -24,7 +24,9 @@ class RolesController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        $roles = $query->paginate(perPage: env('ITEMLIST_COUNT', 50))->withQueryString();
+        $roles = $query
+            ->orderBy('name')
+            ->paginate(perPage: env('ITEMLIST_COUNT', 50))->withQueryString();
 
         // Haal alle permissions voor modals
         $permissions = Permission::all();

@@ -17,7 +17,7 @@ class ContentsController extends Controller
     {
         $search = $request->get('search');
 
-        $query = Content::query()->orderBy('created_at', 'desc');
+        $query = Content::query()->orderBy('modified_at', 'desc');
 
         // Apply company scoping - always filter by user's company
         $user = Auth::user();

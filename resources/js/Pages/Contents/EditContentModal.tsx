@@ -29,16 +29,14 @@ interface EditContentModalProps {
 
 const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose }) => {
     const [name, setName] = useState(content.name);
+    // ...existing code...
     const [file, setFile] = useState<File | null>(null);
-    const [networkPath, setNetworkPath] = useState(content.is_network_path ? content.file_path || "" : "");
-    const [pathType, setPathType] = useState<"upload" | "network">(content.is_network_path ? "network" : "upload");
     const [active, setActive] = useState(content.active);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
     const pathTypeOptions = [
-        { label: "Upload File", value: "upload" },
-        { label: "Network Path", value: "network" }
+    { label: "Upload File", value: "upload" }
     ];
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -52,22 +50,12 @@ const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose })
             return;
         }
 
-        if (pathType === "network" && !networkPath.trim()) {
-            setErrors({ network_path: "Network path is required" });
-            setLoading(false);
-            return;
-        }
-
         const formData = new FormData();
         formData.append('name', name);
         formData.append('_method', 'PUT');
-        formData.append('is_network_path', pathType === "network" ? "1" : "0");
         formData.append('active', active ? "1" : "0");
-        
-        if (pathType === "upload" && file) {
+        if (file) {
             formData.append('excel_file', file);
-        } else if (pathType === "network") {
-            formData.append('network_path', networkPath);
         }
 
         router.post(`/contents/${content.id}`, formData, {
@@ -150,91 +138,43 @@ const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose })
                     </div>
 
                     <div className="field">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Excel Source <span className="text-red-500">*</span>
+                        <label htmlFor="excel_file" className="block text-sm font-medium text-gray-700 mb-2">
+                            File (Excel or Image) {hasExistingFile ? "(optional - leave empty to keep current file)" : ""}
                         </label>
-                        <SelectButton
-                            value={pathType}
-                            onChange={(e) => setPathType(e.value)}
-                            options={pathTypeOptions}
-                            className="mb-4"
+                        {hasExistingFile && (
+                            <div className="mb-3 p-3 bg-gray-50 rounded border">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <i className="pi pi-file-excel text-green-600"></i>
+                                        <span className="text-sm text-gray-700">Current file: {fileName}</span>
+                                    </div>
+                                    <Button
+                                        icon="pi pi-download"
+                                        className="p-button-sm p-button-outlined"
+                                        onClick={() => window.open(`/contents/download/${content.id}`, '_blank')}
+                                        type="button"
+                                        severity="help"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        <FileUpload
+                            name="excel_file"
+                            accept=".xlsx,.xls,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
+                            maxFileSize={10485760} // 10MB
+                            customUpload
+                            uploadHandler={onFileSelect}
+                            onRemove={onFileRemove}
+                            onClear={onFileRemove}
+                            auto
+                            chooseLabel={hasExistingFile ? "Replace File" : "Choose File (Excel or Image)"}
+                            uploadLabel=""
+                            cancelLabel=""
+                            className={errors.excel_file ? "p-invalid" : ""}
+                            emptyTemplate={<p className="m-0">Drag and drop files to here to replace or click to select.</p>}
                         />
+                        {errors.excel_file && <small className="p-error">{errors.excel_file}</small>}
                     </div>
-
-                    {pathType === "upload" ? (
-                        <div className="field">
-                            <label htmlFor="excel_file" className="block text-sm font-medium text-gray-700 mb-2">
-                                File (Excel or Image) {hasExistingFile && !content.is_network_path && "(optional - leave empty to keep current file)"}
-                            </label>
-                            
-                            {hasExistingFile && !content.is_network_path && (
-                                <div className="mb-3 p-3 bg-gray-50 rounded border">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <i className="pi pi-file-excel text-green-600"></i>
-                                            <span className="text-sm text-gray-700">Current file: {fileName}</span>
-                                        </div>
-                                        <Button
-                                            icon="pi pi-download"
-                                            className="p-button-sm p-button-outlined"
-                                            onClick={() => window.open(`/contents/download/${content.id}`, '_blank')}
-                                            type="button"
-                                            severity="help"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            <FileUpload
-                                name="excel_file"
-                                accept=".xlsx,.xls,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
-                                maxFileSize={10485760} // 10MB
-                                customUpload
-                                uploadHandler={onFileSelect}
-                                onRemove={onFileRemove}
-                                onClear={onFileRemove}
-                                auto
-                                chooseLabel={hasExistingFile && !content.is_network_path ? "Replace File" : "Choose File (Excel or Image)"}
-                                uploadLabel=""
-                                cancelLabel=""
-                                className={errors.excel_file ? "p-invalid" : ""}
-                            />
-                            {errors.excel_file && <small className="p-error">{errors.excel_file}</small>}
-                        </div>
-                    ) : (
-                        <div className="field">
-                            <label htmlFor="network_path" className="block text-sm font-medium text-gray-700 mb-2">
-                                Network Path <span className="text-red-500">*</span>
-                            </label>
-                            
-                            {hasExistingFile && content.is_network_path && (
-                                <div className="mb-3 p-3 bg-gray-50 rounded border">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <i className="pi pi-link text-blue-600"></i>
-                                            <span className="text-sm text-gray-700">Current path: {networkFileName}</span>
-                                        </div>
-                                        <Button
-                                            icon="pi pi-external-link"
-                                            className="p-button-sm p-button-outlined"
-                                            onClick={() => window.open(`/contents/download/${content.id}`, '_blank')}
-                                            type="button"
-                                            severity="help"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                            
-                            <InputText
-                                id="network_path"
-                                value={networkPath}
-                                onChange={(e) => setNetworkPath(e.target.value)}
-                                placeholder="Enter network path (e.g., //server/share/file.xlsx or //server/share/image.jpg)"
-                                className={errors.network_path ? "p-invalid" : ""}
-                            />
-                            {errors.network_path && <small className="p-error">{errors.network_path}</small>}
-                        </div>
-                    )}
 
                     <div className="flex justify-end gap-2 pt-4">
                         <Button 
@@ -248,7 +188,7 @@ const EditContentModal: React.FC<EditContentModalProps> = ({ content, onClose })
                             type="submit"
                             label="Update Content" 
                             loading={loading}
-                            disabled={!name.trim() || (pathType === "network" && !networkPath.trim())}
+                            disabled={!name.trim()}
                         />
                     </div>
                 </form>
