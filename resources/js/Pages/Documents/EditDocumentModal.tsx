@@ -456,8 +456,15 @@ export default function EditDocumentModal({
                                 )}
                                 
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
-                                  {/* Removed network path display */}
-                                  
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                                    ${content.is_network_path 
+                                      ? 'bg-orange-100 text-orange-800' 
+                                      : 'bg-blue-100 text-blue-800'
+                                    }
+                                  `}>
+                                    <i className={`pi ${content.is_network_path ? 'pi-link' : 'pi-desktop'} text-xs`}></i>
+                                    {content.is_network_path ? 'Network' : 'Local'}
+                                  </span>
                                   {content.file_size && (
                                     <span className="text-gray-400">
                                       {formatFileSize(content.file_size)}
