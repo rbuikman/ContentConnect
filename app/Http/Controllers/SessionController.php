@@ -10,11 +10,14 @@ class SessionController extends Controller
 {
     public function index()
     {
+
         $sessions = DB::table('sessions')
-            ->orderByDesc('last_activity')
+            ->leftJoin('users', 'sessions.user_id', '=', 'users.id')
+            ->leftJoin('companies', 'users.company_id', '=', 'companies.id')
+            ->orderByDesc('sessions.last_activity')
+            ->select('sessions.*', 'users.name as user_name', 'companies.name as company_name')
             ->get();
 
-        // Optionally, decode user_id from payload if stored
         return Inertia::render('Sessions/ListSessions', [
             'sessions' => $sessions,
         ]);
