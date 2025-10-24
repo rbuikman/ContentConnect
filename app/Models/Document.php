@@ -24,8 +24,8 @@ class Document extends Model
         'deleted',
         'created_by',
         'created_at',
-        'modified_by',
-        'modified_at',
+        'updated_by',
+        'updated_at',
     ];
 
     protected $casts = [

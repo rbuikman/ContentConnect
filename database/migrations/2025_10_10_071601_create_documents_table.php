@@ -21,8 +21,8 @@ return new class extends Migration
             $table->foreignId('status_id')->constrained('statuses')->cascadeOnDelete();
             $table->string('created_by');
             $table->timestamp('created_at')->useCurrent();
-            $table->string('modified_by')->nullable();
-            $table->timestamp('modified_at')->nullable();
+            $table->string('updated_by')->nullable();
+            $table->timestamp('updated_at')->nullable();
         });
     }
 

@@ -17,7 +17,7 @@ class ContentsController extends Controller
     {
         $search = $request->get('search');
 
-        $query = Content::query()->orderBy('modified_at', 'desc');
+        $query = Content::query()->orderBy('updated_at', 'desc');
 
         // Apply company scoping - always filter by user's company
         $user = Auth::user();
@@ -96,7 +96,7 @@ class ContentsController extends Controller
             'active' => $request->boolean('active', true), // Default to true
             'company_id' => Auth::user()->company_id,
             'created_by' => Auth::user()->name,
-            'modified_by' => Auth::user()->name,
+            'updated_by' => Auth::user()->name,
         ]);
 
         return redirect()->route('contents.index')->with('success', 'Content created successfully.');
@@ -117,7 +117,7 @@ class ContentsController extends Controller
         
         $content->name = $request->name;
         $content->active = $request->boolean('active', $content->active); // Keep existing value if not provided
-        $content->modified_by = Auth::user()->name;
+        $content->updated_by = Auth::user()->name;
         
         if ($isNetworkPath) {
             $request->validate([

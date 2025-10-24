@@ -32,7 +32,7 @@ class TemplatesController extends Controller
         $statusId = $request->input('status_id');
         $languageId = $request->input('language_id');
         $contentId = $request->input('content_id');
-        $modifiedAt = $request->input('modified_at');
+        $updatedAt = $request->input('updated_at');
 
         $documents = Document::with(['category', 'subcategory', 'status', 'languages', 'contents'])
             ->where('template', true)
@@ -70,19 +70,19 @@ class TemplatesController extends Controller
                     $contQ->where('contents.id', $contentId);
                 });
             })
-            ->when($modifiedAt, function($q) use ($modifiedAt) {
-                $q->whereDate('modified_at', $modifiedAt);
+            ->when($updatedAt, function($q) use ($updatedAt) {
+                $q->whereDate('updated_at', $updatedAt);
             })
             ->when($sortField, function($q) use ($sortField, $sortOrder) {
                 // Only allow sorting on known fields
                 $allowedSortFields = [
-                    'order_number', 'file_name', 'note', 'category_id', 'sub_category_id', 'status_id', 'modified_at', 'created_at', 'id'
+                    'order_number', 'file_name', 'note', 'category_id', 'sub_category_id', 'status_id', 'updated_at', 'created_at', 'id'
                 ];
                 if (in_array($sortField, $allowedSortFields)) {
                     $q->orderBy($sortField, $sortOrder === 'asc' ? 'asc' : 'desc');
                 }
             }, function($q) {
-                $q->orderBy('modified_at', 'desc');
+                $q->orderBy('updated_at', 'desc');
             })
             ->paginate(env('ITEMLIST_COUNT', 50))
             ->withQueryString();
@@ -131,8 +131,8 @@ class TemplatesController extends Controller
             'company_id' => auth()->user()->company_id,
             'created_by' => auth()->user()->name,
             'created_at' => now(),
-            'modified_by' => auth()->user()->name,
-            'modified_at' => now(),
+            'updated_by' => auth()->user()->name,
+            'updated_at' => now(),
         ]);
 
         Log::info('Template after creation:', $document->fresh()->toArray());
@@ -190,8 +190,8 @@ class TemplatesController extends Controller
             'sub_category_id' => $request->sub_category_id,
             'status_id' => $request->status_id,
             'template' => true, // Always keep template as true for templates
-            'modified_by' => auth()->user()->name,
-            'modified_at' => now(),
+            'updated_by' => auth()->user()->name,
+            'updated_at' => now(),
         ]);
 
         // Update language associations
@@ -222,8 +222,8 @@ class TemplatesController extends Controller
         // Soft delete: set deleted flag and update metadata
         $document->update([
             'deleted' => true,
-            'modified_by' => auth()->user()->name,
-            'modified_at' => now(),
+            'updated_by' => auth()->user()->name,
+            'updated_at' => now(),
         ]);
 
         return redirect()->route('templates.index')->with('success', 'Template deleted successfully');
@@ -393,8 +393,8 @@ class TemplatesController extends Controller
                         'company_id' => $defaultCompanyId,
                         'created_by' => auth()->user() ? auth()->user()->name : 'system',
                         'created_at' => now(),
-                        'modified_by' => auth()->user() ? auth()->user()->name : 'system',
-                        'modified_at' => now(),
+                        'updated_by' => auth()->user() ? auth()->user()->name : 'system',
+                        'updated_at' => now(),
                     ]);
 
                     $createdCount++;
@@ -425,8 +425,8 @@ class TemplatesController extends Controller
             if (!$fileExists) {
                 $dbTemplate->update([
                     'deleted' => true,
-                    'modified_by' => auth()->user() ? auth()->user()->name : 'system',
-                    'modified_at' => now(),
+                    'updated_by' => auth()->user() ? auth()->user()->name : 'system',
+                    'updated_at' => now(),
                 ]);
                 
                 $deletedCount++;

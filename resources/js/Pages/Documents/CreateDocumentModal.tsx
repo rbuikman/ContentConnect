@@ -45,7 +45,7 @@ interface Content {
   is_network_path: boolean;
   active: boolean;
   created_by: string;
-  modified_by: string | null;
+  updated_by: string | null;
   created_at: string;
   updated_at: string;
 }

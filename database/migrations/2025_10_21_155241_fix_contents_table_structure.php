@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('excel_file_path')->nullable(); // Can be local file path or network path
             $table->boolean('is_network_path')->default(false); // Flag to indicate if it's a network path
             $table->string('created_by');
-            $table->string('modified_by')->nullable();
+            $table->string('updated_by')->nullable();
             $table->timestamps();
         });
     }

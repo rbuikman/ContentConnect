@@ -25,7 +25,7 @@ class DocumentsController extends Controller
         $statusId = $request->input('status_id');
         $languageId = $request->input('language_id');
         $contentId = $request->input('content_id');
-        $modifiedAt = $request->input('modified_at');
+        $updatedAt = $request->input('updated_at');
 
         $documents = Document::with(['category', 'subcategory', 'status', 'baseTemplate', 'languages', 'contents'])
             ->where('template', false)
@@ -73,19 +73,19 @@ class DocumentsController extends Controller
                     $contQ->where('contents.id', $contentId);
                 });
             })
-            ->when($modifiedAt, function($q) use ($modifiedAt) {
-                $q->whereDate('modified_at', $modifiedAt);
+            ->when($updatedAt, function($q) use ($updatedAt) {
+                $q->whereDate('updated_at', $updatedAt);
             })
             ->when($sortField, function($q) use ($sortField, $sortOrder) {
                 // Only allow sorting on known fields
                 $allowedSortFields = [
-                    'order_number', 'file_name', 'note', 'category_id', 'sub_category_id', 'status_id', 'modified_at', 'created_at', 'id'
+                    'order_number', 'file_name', 'note', 'category_id', 'sub_category_id', 'status_id', 'updated_at', 'created_at', 'id'
                 ];
                 if (in_array($sortField, $allowedSortFields)) {
                     $q->orderBy($sortField, $sortOrder === 'asc' ? 'asc' : 'desc');
                 }
             }, function($q) {
-                $q->orderBy('modified_at', 'desc');
+                $q->orderBy('updated_at', 'desc');
             })
             ->paginate(perPage: env('ITEMLIST_COUNT', 50))
             ->withQueryString();
@@ -102,7 +102,7 @@ class DocumentsController extends Controller
             'status_id' => $statusId,
             'language_id' => $languageId,
             'content_id' => $contentId,
-            'modified_at' => $modifiedAt,
+            'updated_at' => $updatedAt,
         ]);
 
         return Inertia::render('Documents/ListDocuments', [
@@ -155,8 +155,8 @@ class DocumentsController extends Controller
             'company_id' => auth()->user()->company_id,
             'created_by' => auth()->user()->name,
             'created_at' => now(),
-            'modified_by' => auth()->user()->name,
-            'modified_at' => now(),
+            'updated_by' => auth()->user()->name,
+            'updated_at' => now(),
         ]);
 
         Log::info('Document after creation:', $document->fresh()->toArray());
@@ -356,8 +356,8 @@ class DocumentsController extends Controller
             'status_id' => $request->status_id,
             'template' => false, // Always keep template as false for documents
             'template_id' => $request->template_id, // Update template reference if provided
-            'modified_by' => auth()->user()->name,
-            'modified_at' => now(),
+            'updated_by' => auth()->user()->name,
+            'updated_at' => now(),
         ]);
 
         // Update language associations
@@ -389,8 +389,8 @@ class DocumentsController extends Controller
         // Soft delete: set deleted flag and update metadata
         $document->update([
             'deleted' => true,
-            'modified_by' => auth()->user()->name,
-            'modified_at' => now(),
+            'updated_by' => auth()->user()->name,
+            'updated_at' => now(),
         ]);
 
         return redirect()->route('documents.index')->with('success', 'Document deleted successfully');

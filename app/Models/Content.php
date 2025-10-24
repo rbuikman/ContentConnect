@@ -19,7 +19,7 @@ class Content extends Model
         'is_network_path',
         'active',
         'created_by',
-        'modified_by',
+        'updated_by',
     ];
 
     protected $casts = [

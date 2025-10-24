@@ -45,14 +45,19 @@ class StatusController extends Controller
     {
         $user = $request->user();
         
+        // Build validation rules with company scoping
         $rules = [
-            'name' => 'required|min:3|unique:statuses,name',
             'active' => 'boolean'
         ];
 
-        // Add company_id validation for SuperAdmin users
+        // Add uniqueness validation scoped by company
         if ($user->hasPermissionTo('superadmin')) {
             $rules['company_id'] = 'required|exists:companies,id';
+            $companyId = $request->input('company_id');
+            $rules['name'] = 'required|min:3|unique:statuses,name,NULL,id,company_id,' . $companyId;
+        } else {
+            $companyId = $user->company_id;
+            $rules['name'] = 'required|min:3|unique:statuses,name,NULL,id,company_id,' . $companyId;
         }
 
     $validated = $request->validate($rules);
@@ -116,14 +121,19 @@ class StatusController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        // Build validation rules with company scoping
         $rules = [
-            'name' => 'required|min:3|unique:statuses,name,' . $id,
             'active' => 'boolean'
         ];
 
-        // Add company_id validation for SuperAdmin users
+        // Add uniqueness validation scoped by company
         if ($user->hasPermissionTo('superadmin')) {
             $rules['company_id'] = 'required|exists:companies,id';
+            $companyId = $request->input('company_id', $status->company_id);
+            $rules['name'] = 'required|min:3|unique:statuses,name,' . $id . ',id,company_id,' . $companyId;
+        } else {
+            $companyId = $user->company_id;
+            $rules['name'] = 'required|min:3|unique:statuses,name,' . $id . ',id,company_id,' . $companyId;
         }
 
         $validated = $request->validate($rules);

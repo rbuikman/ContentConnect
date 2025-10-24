@@ -62,7 +62,7 @@ interface Content {
   is_network_path: boolean;
   active: boolean;
   created_by: string;
-  modified_by: string | null;
+  updated_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -81,8 +81,8 @@ interface Document {
   template_id?: number; // Add template_id field
   created_by: string;
   created_at: string;
-  modified_by?: string;
-  modified_at?: string;
+  updated_by?: string;
+  updated_at?: string;
 }
 
 
@@ -130,7 +130,7 @@ const defaultFilters: DataTableFilterMeta = {
   status: { value: null, matchMode: FilterMatchMode.EQUALS },
   languages: { value: null, matchMode: 'languageContains' as any },
   contents: { value: null, matchMode: 'contentContains' as any },
-  modified_at: { value: null, matchMode: FilterMatchMode.DATE_IS }
+  updated_at: { value: null, matchMode: FilterMatchMode.DATE_IS }
 };
 
 
@@ -171,7 +171,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
         { field: 'status', header: 'Status' },
         { field: 'languages', header: 'Languages' },
         { field: 'contents', header: 'Contents' },
-        { field: 'modified_at', header: 'Modified At' }
+        { field: 'updated_at', header: 'Modified At' }
     ];
 
     // Initialize visible columns from localStorage (default), sessionStorage (current session), or use fallback default
@@ -772,7 +772,7 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
     };
 
     const dateBodyTemplate = (rowData: Document) => {
-        return formatDate(new Date(rowData.modified_at!));
+        return formatDate(new Date(rowData.updated_at!));
     };
 
     const rowExpansionTemplate = (data: Document) => {
@@ -835,8 +835,8 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
                             )}
                             <p className="text-sm"><span className="font-medium">Created:</span> {formatDate(new Date(data.created_at!))}</p>
                             <p className="text-sm"><span className="font-medium">Created by:</span> {data.created_by}</p>
-                            <p className="text-sm"><span className="font-medium">Modified:</span> {formatDate(new Date(data.modified_at!))}</p>
-                            <p className="text-sm"><span className="font-medium">Modified by:</span> {data.modified_by}</p>
+                            <p className="text-sm"><span className="font-medium">Modified:</span> {formatDate(new Date(data.updated_at!))}</p>
+                            <p className="text-sm"><span className="font-medium">Modified by:</span> {data.updated_by}</p>
                         </div>
                     </div>
                 </div>
@@ -866,10 +866,10 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             <Calendar
                 value={options.value ? new Date(options.value) : null} // Convert the value to a Date object if it exists
                 onChange={(e) => {
-                    const selectedDate = e.value ? new Date(e.value).toISOString().split('T')[0] : null; // Format date to match `modified_at`
+                    const selectedDate = e.value ? new Date(e.value).toISOString().split('T')[0] : null; // Format date to match `updated_at`
                     options.filterCallback(selectedDate, options.index);
                 }}
-                dateFormat="yyyy-mm-dd" // Match the format of `modified_at`
+                dateFormat="yyyy-mm-dd" // Match the format of `updated_at`
                 placeholder="yyyy-mm-dd"
                 mask="9999-99-99"
             />
@@ -1072,8 +1072,8 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
             if (languageValue) filterParams.language_id = languageValue.id || languageValue;
             const contentValue = getFilterValue(e.filters.contents);
             if (contentValue) filterParams.content_id = contentValue.id || contentValue;
-            const modifiedAtValue = getFilterValue(e.filters.modified_at);
-            if (modifiedAtValue) filterParams.modified_at = modifiedAtValue;
+            const updatedAtValue = getFilterValue(e.filters.updated_at);
+            if (updatedAtValue) filterParams.updated_at = updatedAtValue;
             // Debug: log outgoing filter params
             if (typeof router !== 'undefined' && router.get) {
               router.get(window.location.pathname, filterParams, {
@@ -1162,9 +1162,9 @@ const ListDocuments: React.FC<ListDocumentsProps> = ({ documents, statuses, cate
           )}
         {/*  <Column field="created_by" header="Created By" sortable filter filterPlaceholder="Search by created by" style={{ minWidth: '12rem' }}></Column>
           <Column field="created_at" header="Created At" filter sortable filterPlaceholder="Search by created at" style={{ minWidth: '12rem' }}></Column>
-          <Column field="modified_by" header="Modified By" filter sortable filterPlaceholder="Search by modified by" style={{ minWidth: '12rem' }}></Column>*/}
-          {visibleColumns.some(col => col.field === 'modified_at') && (
-            <Column field="modified_at" body={dateBodyTemplate} header="Modified At" sortable filterPlaceholder="Search by modified at" style={{ minWidth: '12rem' }}  showFilterMenu={false} ></Column>
+          <Column field="updated_by" header="Modified By" filter sortable filterPlaceholder="Search by modified by" style={{ minWidth: '12rem' }}></Column>*/}
+          {visibleColumns.some(col => col.field === 'updated_at') && (
+            <Column field="updated_at" body={dateBodyTemplate} header="Modified At" sortable filterPlaceholder="Search by modified at" style={{ minWidth: '12rem' }}  showFilterMenu={false} ></Column>
           )}
           <Column alignFrozen="right" frozen={true} rowEditor={true} header="Actions" headerStyle={{ width: '15%', minWidth: '12rem' }} bodyStyle={{ textAlign: 'center' }} body={(rowData: any, options: ColumnBodyOptions) => (
     <>
