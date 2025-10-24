@@ -23,7 +23,7 @@ interface AppUser {
 
 interface EditUserProps {
   user: AppUser;
-  roles?: Role[];
+  rolesByCompany?: Record<string | number, Role[]>;
   companies?: Company[];
   onClose: () => void;
 }
@@ -35,7 +35,7 @@ interface FormDataShape {
   roles: number[];
 }
 
-export default function EditUserModal({ user, roles = [], companies = [], onClose }: EditUserProps) {
+export default function EditUserModal({ user, rolesByCompany = {}, companies = [], onClose }: EditUserProps) {
   const { errors } = usePage().props as any;
   const page = usePage();
   const userPermissions = page.props.auth?.permissions || [];
@@ -52,24 +52,27 @@ export default function EditUserModal({ user, roles = [], companies = [], onClos
     return userPermissions.includes('superadmin');
   }, [userPermissions]);
 
-  // Filter roles based on user permissions
-  const filteredRoles = React.useMemo(() => {
-    const canManageCompanyPermissions = userPermissions.includes('superadmin');
-    
-    if (canManageCompanyPermissions) {
-      return roles;
-    }
-    
-    // Filter out SuperAdmin role if user doesn't have superadmin permission
-    return roles.filter(role => role.name !== 'SuperAdmin');
-  }, [roles, userPermissions]);
-
   const [form, setForm] = useState<FormDataShape>({
     name: user.name,
     email: user.email,
     company_id: user.company_id || null,
     roles: user.roles.map(role => role.id),
   });
+
+  // Filter roles by selected company (and global roles)
+  const selectedCompanyId = form?.company_id ?? user.company_id ?? null;
+  const rolesForCompany: Role[] = React.useMemo(() => {
+    let companyKey = selectedCompanyId !== null && selectedCompanyId !== undefined ? String(selectedCompanyId) : 'global';
+    let companyRoles: Role[] = rolesByCompany?.[companyKey] || [];
+    let globalRoles: Role[] = rolesByCompany?.['global'] || [];
+    let allRoles: Role[] = [...companyRoles, ...globalRoles];
+    // Filter out SuperAdmin role if user doesn't have superadmin permission
+    if (!userPermissions.includes('superadmin')) {
+      allRoles = allRoles.filter((role: Role) => role.name !== 'SuperAdmin');
+    }
+    return allRoles;
+  }, [rolesByCompany, selectedCompanyId, userPermissions]);
+
 
   // Update form if user changes
   useEffect(() => {
@@ -98,7 +101,7 @@ export default function EditUserModal({ user, roles = [], companies = [], onClos
   };
 
   const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setForm(prev => ({ ...prev, company_id: e.target.value ? Number(e.target.value) : null }));
+  setForm(prev => ({ ...prev, company_id: e.target.value ? Number(e.target.value) : null, roles: [] }));
   };
 
   const handleSelectRole = (roleId: number) => {
@@ -202,8 +205,8 @@ export default function EditUserModal({ user, roles = [], companies = [], onClos
           <div>
             <h4 className="text-sm font-medium text-gray-700 mb-2">Roles</h4>
             <div className="flex flex-wrap gap-2">
-              {filteredRoles.length > 0 ? (
-                filteredRoles.map(role => (
+              {rolesForCompany.length > 0 ? (
+                rolesForCompany.map((role: Role) => (
                   <label key={role.id} className="flex items-center space-x-2">
                     <input
                       type="checkbox"

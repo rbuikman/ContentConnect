@@ -196,7 +196,7 @@ export default function ListUsers({ users, roles, companies = [], filters }: Lis
         {/* Modals */}
         {showCreateModal && hasPermission('user-create') && (
           <CreateUserModal
-            roles={roles}
+            rolesByCompany={page.props.rolesByCompany as Record<string | number, Role[]>}
             companies={companies}
             onClose={() => setShowCreateModal(false)}
           />
@@ -204,7 +204,7 @@ export default function ListUsers({ users, roles, companies = [], filters }: Lis
         {editingUser && hasPermission('user-edit') && (
           <EditUserModal
             user={editingUser}
-            roles={roles}
+            rolesByCompany={page.props.rolesByCompany as Record<string | number, Role[]>}
             companies={companies}
             onClose={() => setEditingUser(null)}
           />

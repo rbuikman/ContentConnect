@@ -51,7 +51,21 @@ class CompanyController extends Controller
 
             $company = Company::create($validated);
 
+            // Create Admin role for this company with all permissions except superadmin and company permissions
+            $adminRole = \App\Models\Role::create([
+                'name' => 'Admin',
+                'company_id' => $company->id,
+                'guard_name' => config('auth.defaults.guard'),
+            ]);
+
+            // Get all permissions except superadmin and company permissions
+            $excluded = ['superadmin'];
+            $excludedCompany = ['company-index', 'company-create', 'company-edit', 'company-delete', 'company-update', 'company-destroy', 'companies.index', 'companies.create', 'companies.edit', 'companies.update', 'companies.destroy'];
+            $permissions = \Spatie\Permission\Models\Permission::whereNotIn('name', array_merge($excluded, $excludedCompany))->pluck('name')->toArray();
+            $adminRole->syncPermissions($permissions);
+
             Log::info('Company created:', ['company' => $company]);
+            Log::info('Admin role created for company:', ['role' => $adminRole, 'permissions' => $permissions]);
 
             return redirect()->route('companies.index')
                 ->with('success', 'Company created successfully.');

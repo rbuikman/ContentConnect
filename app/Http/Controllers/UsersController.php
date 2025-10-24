@@ -41,25 +41,38 @@ class UsersController extends Controller
 
         // Filter roles based on user permissions for role dropdown
         if ($currentUser->hasPermissionTo('superadmin')) {
-            $roles = Role::all();
+            $roles = Role::with('permissions')->get();
         } else {
-            // Non-SuperAdmin users should not see roles with superadmin permission
-            $roles = Role::whereDoesntHave('permissions', function($query) {
+            $roles = Role::with('permissions')->whereDoesntHave('permissions', function($query) {
                 $query->where('name', 'superadmin');
             })->get();
+        }
+
+        // Group roles by company_id (null for global roles)
+        $groupedRoles = [];
+        foreach ($roles as $role) {
+            $companyId = $role->company_id ?? 'global';
+            if (!isset($groupedRoles[$companyId])) {
+                $groupedRoles[$companyId] = [];
+            }
+            $groupedRoles[$companyId][] = [
+                'id' => $role->id,
+                'name' => $role->name,
+                'company_id' => $role->company_id,
+            ];
         }
 
         // Filter companies based on user permissions
         if ($currentUser->hasPermissionTo('superadmin')) {
             $companies = Company::where('active', true)->get();
         } else {
-            // Non-SuperAdmin users should only see their own company
             $companies = Company::where('id', $currentUser->company_id)->where('active', true)->get();
         }
 
         return Inertia::render('Users/ListUsers', [
             'users' => $users,
             'roles' => $roles,
+            'rolesByCompany' => $groupedRoles,
             'companies' => $companies,
             'filters' => ['search' => $query],
         ]);
@@ -69,18 +82,32 @@ class UsersController extends Controller
     {
         $currentUser = auth()->user();
         $roles = Role::with('permissions')->get();
-        
+
         // Filter out SuperAdmin role for non-SuperAdmin users
         if (!$currentUser->hasPermissionTo('superadmin')) {
             $roles = $roles->filter(function($role) {
                 return !$role->permissions->contains('name', 'superadmin');
             });
         }
-        
+
         $companies = Company::all();
 
+        // Group roles by company_id (null for global roles)
+        $groupedRoles = [];
+        foreach ($roles as $role) {
+            $companyId = $role->company_id ?? 'global';
+            if (!isset($groupedRoles[$companyId])) {
+                $groupedRoles[$companyId] = [];
+            }
+            $groupedRoles[$companyId][] = [
+                'id' => $role->id,
+                'name' => $role->name,
+                'company_id' => $role->company_id,
+            ];
+        }
+dd($groupedRoles);
         return Inertia::render('Users/CreateUserModal', [
-            'roles' => $roles->values(),
+            'rolesByCompany' => $groupedRoles,
             'companies' => $companies
         ]);
 
@@ -120,7 +147,7 @@ class UsersController extends Controller
             'name' => 'required|min:3',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6|confirmed',
-            'company_id' => 'nullable|exists:companies,id',
+            'company_id' => 'required|exists:companies,id',
         ]);
 
         $user = User::create([
@@ -153,7 +180,7 @@ class UsersController extends Controller
             'name' => 'required|min:3',
             'email' => 'required|email|unique:users,email,' . $id,
             'password' => 'nullable|min:6|confirmed',
-            'company_id' => 'nullable|exists:companies,id',
+            'company_id' => 'required|exists:companies,id',
         ]);
         $user->name = $validated['name'];
         $user->email = $validated['email'];
