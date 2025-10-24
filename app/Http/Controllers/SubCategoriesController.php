@@ -16,9 +16,9 @@ class SubCategoriesController extends Controller
 
         // Apply company scoping through category relationship
         $user = auth()->user();
-        if (!$user->hasPermissionTo('superadmin')) {
+        //if (!$user->hasPermissionTo('superadmin')) {
             $query->forCompany($user->company_id);
-        }
+        //}
 
         // Voeg search toe
         if ($search = $request->input('search')) {

@@ -15,9 +15,9 @@ class RolesController extends Controller
         $query = Role::with(['permissions', 'company'])->withCount('users');
 
         // Filter by company for non-SuperAdmin users
-        if (!auth()->user()->hasRole('SuperAdmin')) {
+        //if (!auth()->user()->hasRole('SuperAdmin')) {
             $query->forCompany(auth()->user()->company_id);
-        }
+        //}
 
         // Voeg search toe
         if ($search = $request->input('search')) {

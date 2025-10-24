@@ -109,12 +109,12 @@ class DocumentsController extends Controller
             'documents' => $documents ?? [
                 'data' => []
             ],
-            'categories' => Category::forCompany($user->company_id)->active()->get(),
+            'categories' => Category::forCompany($user->company_id)->active()->orderBy('sortorder')->get(),
             'subcategories' => SubCategory::forCompany($user->company_id)->get(),
-            'statuses' => Status::where('active', true)->forCompany($user->company_id)->get(),
-            'languages' => Language::where('active', true)->forCompany($user->company_id)->get(),
-            'contents' => Content::where('active', true)->forCompany($user->company_id)->get(),
-            'templates' => Document::where('template', true)->where('deleted', false)->forCompany($user->company_id)->with(['languages', 'contents'])->get(['id', 'file_name', 'category_id', 'sub_category_id']),
+            'statuses' => Status::where('active', true)->forCompany($user->company_id)->orderBy('sortorder')->get(),
+            'languages' => Language::where('active', true)->forCompany($user->company_id)->orderBy('sortorder')->get(),
+            'contents' => Content::where('active', true)->forCompany($user->company_id)->orderBy('name')->get(),
+            'templates' => Document::where('template', true)->where('deleted', false)->forCompany($user->company_id)->orderBy('file_name')->with(['languages', 'contents'])->get(['id', 'file_name', 'category_id', 'sub_category_id']),
             'template' => false, // Pass template parameter for documents
             'webeditorUrl' => config('app.webeditor_url'), // Add webeditor URL from config
             'webeditorDocumentPath' => str_replace('{company}', $user->company->name, config('app.webeditor_document_path')), // Add document path from config

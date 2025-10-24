@@ -16,9 +16,9 @@ class CategoriesController extends Controller
         $query = Category::with('company');
 
         // Non-SuperAdmin users can only see categories from their company
-        if (!$user->hasPermissionTo('superadmin')) {
+        //if (!$user->hasPermissionTo('superadmin')) {
             $query->forCompany($user->company_id);
-        }
+        //}
 
         // Voeg search toe
         if ($search = $request->input('search')) {

@@ -30,10 +30,10 @@ class UsersController extends Controller
                     $permissionQuery->where('name', 'superadmin');
                 });
             });
-            
-            // Non-SuperAdmin users should only see users from their own company
-            $usersQuery->where('company_id', $currentUser->company_id);
         }
+
+        // all users should only see users from their own company
+        $usersQuery->where('company_id', $currentUser->company_id);
 
         $users = $usersQuery
             ->orderBy('name')

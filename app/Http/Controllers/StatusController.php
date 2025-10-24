@@ -15,9 +15,9 @@ class StatusController extends Controller
         $query = Status::with('company');
 
         // Non-SuperAdmin users can only see statuses from their company
-        if (!$user->hasPermissionTo('superadmin')) {
+        //if (!$user->hasPermissionTo('superadmin')) {
             $query->where('company_id', $user->company_id);
-        }
+        //}
 
         // Add search functionality
         if ($search = $request->input('search')) {

@@ -15,9 +15,9 @@ class LanguageController extends Controller
         $query = Language::with('company');
 
         // Non-SuperAdmin users can only see languages from their company
-        if (!$user->hasPermissionTo('superadmin')) {
+        //if (!$user->hasPermissionTo('superadmin')) {
             $query->where('company_id', $user->company_id);
-        }
+        //}
 
         // Add search functionality
         if ($search = $request->input('search')) {
@@ -31,9 +31,9 @@ class LanguageController extends Controller
 
         // Get companies for SuperAdmin users
         $companies = [];
-        if ($user->hasPermissionTo('superadmin')) {
+        //if ($user->hasPermissionTo('superadmin')) {
             $companies = Company::where('active', true)->get();
-        }
+        //}
 
         return Inertia::render(component: 'Languages/ListLanguages', props: [
             'languages' => $languages,
