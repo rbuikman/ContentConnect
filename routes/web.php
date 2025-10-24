@@ -178,4 +178,7 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+// User company change routes for SuperAdmin
+require __DIR__.'/usercompany.php';
+
 require __DIR__.'/auth.php';

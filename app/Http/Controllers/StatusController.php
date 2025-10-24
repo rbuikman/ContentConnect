@@ -60,11 +60,11 @@ class StatusController extends Controller
             $rules['name'] = 'required|min:3|unique:statuses,name,NULL,id,company_id,' . $companyId;
         }
 
-    $validated = $request->validate($rules);
+        $validated = $request->validate($rules);
 
-    $validated['active'] = $request->boolean('active', true); // Default to true
-    $validated['sortorder'] = $request->input('sortorder', 0); // Save sortorder
-        
+        $validated['active'] = $request->boolean('active', true); // Default to true
+        $validated['sortorder'] = $request->input('sortorder', 0); // Save sortorder
+            
         // Auto-assign company for non-SuperAdmin users
         if (!$user->hasPermissionTo('superadmin')) {
             $validated['company_id'] = $user->company_id;

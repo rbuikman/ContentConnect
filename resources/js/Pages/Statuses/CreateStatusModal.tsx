@@ -23,6 +23,7 @@ export default function CreateStatusModal({ onClose, companies = [] }: CreateSta
   const { errors } = usePage().props as any;
   const page = usePage();
   const permissions = page.props.auth?.permissions || [];
+  const currentCompanyId = page.props.auth?.user?.company_id;
 
   // Helper function to check if user has permission
   const hasPermission = (permission: string) => {
@@ -32,7 +33,7 @@ export default function CreateStatusModal({ onClose, companies = [] }: CreateSta
   const [form, setForm] = useState<FormDataShape>({
     name: "",
     active: true,
-    company_id: companies.length > 0 ? companies[0]?.id : undefined,
+    company_id: currentCompanyId ?? (companies.length > 0 ? companies[0]?.id : undefined),
     sortorder: 0,
   });
 
@@ -110,8 +111,8 @@ export default function CreateStatusModal({ onClose, companies = [] }: CreateSta
             {errors.sortorder && <div className="text-red-500 text-sm mt-1">{errors.sortorder}</div>}
           </div>
 
-          {/* Company Selection - Only visible to SuperAdmin users */}
-          {hasPermission('superadmin') && companies.length > 0 && (
+          {/* Company Selection - Always shown, always disabled, preselected to current user's company */}
+          {companies.length > 0 && (
             <div className="mb-4">
               <label htmlFor="company_id" className="block text-sm font-medium text-gray-700">
                 Company
@@ -120,11 +121,10 @@ export default function CreateStatusModal({ onClose, companies = [] }: CreateSta
                 id="company_id"
                 name="company_id"
                 value={form.company_id || ''}
-                onChange={(e) => setForm({ ...form, company_id: Number(e.target.value) })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                disabled
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 text-gray-500 cursor-not-allowed focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 required
               >
-                <option value="">Select a company</option>
                 {companies.map((company) => (
                   <option key={company.id} value={company.id}>
                     {company.name}

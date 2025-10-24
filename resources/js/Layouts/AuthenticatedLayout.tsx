@@ -1,4 +1,11 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
+import ChangeCompanyModal from '@/Components/ChangeCompanyModal';
+
+interface Company {
+  id: number;
+  name: string;
+}
+
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
@@ -27,6 +34,7 @@ export default function Authenticated({
     const permissions = page.props.auth?.permissions || [];
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
+    const [showChangeCompanyModal, setShowChangeCompanyModal] = useState(false);
 
     // Helper function to check if user has permission
     const hasPermission = (permission: string) => {
@@ -44,6 +52,10 @@ export default function Authenticated({
     if (!user) {
         return null;
     }
+
+    // Get companies for modal (from page.props, assuming they're available for superadmin)
+    const companies: Company[] = Array.isArray(page.props.companies) ? page.props.companies : [];
+    const currentCompanyId = user.company_id;
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -105,9 +117,22 @@ export default function Authenticated({
                                                 Contents
                                             </Dropdown.Link>
                                         )}
-                                        
-                                        {hasPermission('company-index') && (
+
+                                        {hasPermission('superadmin') && (
                                             <hr className="my-1 border-gray-200" />
+                                        )}
+                                        {hasPermission('superadmin') && (
+                                            <>
+                                                <hr className="my-1 border-gray-200" />
+                                                <button
+                                                    type="button"
+                                                    className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    onClick={() => setShowChangeCompanyModal(true)}
+                                                >
+                                                    <BuildingOfficeIcon className="h-4 w-4" />
+                                                    Change Company
+                                                </button>
+                                            </>
                                         )}
 
                                         {hasPermission('company-index') && (
@@ -117,6 +142,7 @@ export default function Authenticated({
                                             </Dropdown.Link>
                                         )}
 
+                                        
                                         {(hasPermission('role-index') || hasPermission('user-index')) && (
                                             <hr className="my-1 border-gray-200" />
                                         )}
@@ -226,6 +252,12 @@ export default function Authenticated({
                     }
                 >
                     <div className="space-y-1 pb-3 pt-2">
+                        {hasPermission('superadmin') && (
+                            <ResponsiveNavLink href={route('usercompany.change')} className="flex items-center gap-2">
+                                <BuildingOfficeIcon className="h-4 w-4" />
+                                Change Current Company
+                            </ResponsiveNavLink>
+                        )}
                         {hasPermission('document-index') && (
                             <ResponsiveNavLink href={route('documents.index')} className="flex items-center gap-2">
                                 <DocumentTextIcon className="h-4 w-4" />
@@ -328,6 +360,14 @@ export default function Authenticated({
                     </div>
                 </div>
             </main>
+
+            {showChangeCompanyModal && (
+                <ChangeCompanyModal
+                    companies={companies}
+                    currentCompanyId={currentCompanyId}
+                    onClose={() => setShowChangeCompanyModal(false)}
+                />
+            )}
         </div>
     );
 }

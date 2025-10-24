@@ -29,7 +29,7 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        return [
+        $shared = [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user() ? $request->user()->load('company') : null,
@@ -40,5 +40,13 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
         ];
+
+        // Only pass companies if user has superadmin permission
+        $user = $request->user();
+        if ($user && $user->hasPermissionTo('superadmin')) {
+            $shared['companies'] = \App\Models\Company::where('active', true)->get(['id', 'name']);
+        }
+
+        return $shared;
     }
 }
