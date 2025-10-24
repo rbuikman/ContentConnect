@@ -1,4 +1,5 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
+import AboutBox from '@/Components/AboutBox';
 import ChangeCompanyModal from '@/Components/ChangeCompanyModal';
 
 interface Company {
@@ -35,6 +36,19 @@ export default function Authenticated({
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
     const [showChangeCompanyModal, setShowChangeCompanyModal] = useState(false);
+    const [showAboutBox, setShowAboutBox] = useState(false);
+
+    // Close AboutBox on Escape key
+    useEffect(() => {
+        if (!showAboutBox) return;
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowAboutBox(false);
+            }
+        };
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, [showAboutBox]);
 
     // Helper function to check if user has permission
     const hasPermission = (permission: string) => {
@@ -55,8 +69,7 @@ export default function Authenticated({
 
     // Get companies for modal (from page.props, assuming they're available for superadmin)
     const companies: Company[] = Array.isArray(page.props.companies) ? page.props.companies : [];
-    const currentCompanyId = user.company_id;
-
+    const currentCompanyId = user?.company_id;
     return (
         <div className="min-h-screen bg-gray-100">
             <nav className="border-b border-gray-100 bg-white">
@@ -99,6 +112,8 @@ export default function Authenticated({
                                     </Dropdown.Trigger>
 
                                     <Dropdown.Content>
+                                        <hr className="my-1 border-gray-200" />
+
                                         {hasPermission('document-index') && (
                                             <Dropdown.Link href={route('documents.index')} className="flex items-center gap-2">
                                                 <DocumentTextIcon className="h-4 w-4" />
@@ -196,6 +211,16 @@ export default function Authenticated({
                                             <ArrowRightOnRectangleIcon className="h-4 w-4" />
                                             Log Out
                                         </Dropdown.Link>
+
+                                        <hr className="my-1 border-gray-200" />
+                                        <button
+                                            type="button"
+                                            className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            onClick={() => setShowAboutBox(true)}
+                                        >
+                                            <RectangleStackIcon className="h-4 w-4" />
+                                            About
+                                        </button>
                                     </Dropdown.Content>
                                 </Dropdown>
                             </div>
@@ -367,6 +392,13 @@ export default function Authenticated({
                     currentCompanyId={currentCompanyId}
                     onClose={() => setShowChangeCompanyModal(false)}
                 />
+            )}
+            {showAboutBox && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" onClick={() => setShowAboutBox(false)}>
+                    <div className="relative" onClick={e => e.stopPropagation()}>
+                        <AboutBox />
+                    </div>
+                </div>
             )}
         </div>
     );
