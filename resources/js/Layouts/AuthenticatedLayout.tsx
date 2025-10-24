@@ -1,6 +1,5 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import React from 'react';
-import ListSessions from '@/Components/ListSessions';
 import AboutBox from '@/Components/AboutBox';
 import ChangeCompanyModal from '@/Components/ChangeCompanyModal';
 
@@ -25,7 +24,8 @@ import {
     RectangleStackIcon,
     LanguageIcon,
     UserIcon,
-    ArrowRightOnRectangleIcon
+    ArrowRightOnRectangleIcon,
+    GlobeAltIcon
 } from '@heroicons/react/24/outline';
 
 export default function Authenticated({
@@ -114,7 +114,6 @@ export default function Authenticated({
                                     </Dropdown.Trigger>
 
                                     <Dropdown.Content>
-
                                         {hasPermission('document-index') && (
                                             <Dropdown.Link href={route('documents.index')} className="flex items-center gap-2">
                                                 <DocumentTextIcon className="h-4 w-4" />
@@ -155,12 +154,20 @@ export default function Authenticated({
                                                 <FolderIcon className="h-4 w-4" />
                                                 Active Sessions
                                             </Dropdown.Link>
+                                            
                                         )}
 
                                         {hasPermission('company-index') && (
                                             <Dropdown.Link href={route('companies.index')} className="flex items-center gap-2">
                                                 <BuildingOfficeIcon className="h-4 w-4" />
                                                 Companies
+                                            </Dropdown.Link>
+                                        )}
+
+                                        {hasPermission('superadmin') && (
+                                            <Dropdown.Link href={route('translate.page')} className="flex items-center gap-2">
+                                                <GlobeAltIcon className="h-4 w-4" />
+                                                Translate Text
                                             </Dropdown.Link>
                                         )}
 

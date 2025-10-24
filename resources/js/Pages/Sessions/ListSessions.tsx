@@ -30,11 +30,11 @@ export default function ListSessions({ sessions }: Props) {
             <thead className="text-xs uppercase bg-gray-100 border-b">
               <tr>
                 <th className="px-6 py-3 font-semibold">Session ID</th>
-                <th className="px-6 py-3 font-semibold">User</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap">User</th>
                 <th className="px-6 py-3 font-semibold">Company</th>
                 <th className="px-6 py-3 font-semibold">IP Address</th>
                 <th className="px-6 py-3 font-semibold">User Agent</th>
-                <th className="px-6 py-3 font-semibold">Last Activity</th>
+                <th className="px-6 py-3 font-semibold whitespace-nowrap">Last Activity</th>
               </tr>
             </thead>
             <tbody>
@@ -42,7 +42,7 @@ export default function ListSessions({ sessions }: Props) {
                 sessions.map(session => (
                   <tr key={session.id} className="border-b hover:bg-blue-50 transition">
                     <td className="px-6 py-4 text-xs break-all font-medium text-gray-900">{session.id}</td>
-                    <td className="px-6 py-4">{session.user_name || session.user_id || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{session.user_name || session.user_id || '-'}</td>
                     <td className="px-6 py-4">{session.company_name || '-'}</td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -50,7 +50,7 @@ export default function ListSessions({ sessions }: Props) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-xs">{session.user_agent || '-'}</td>
-                    <td className="px-6 py-4 text-gray-500">{formatDate(session.last_activity)}</td>
+                    <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{formatDate(session.last_activity)}</td>
                   </tr>
                 ))
               ) : (

@@ -41,7 +41,7 @@ class TemplatesController extends Controller
         $documents->forCompany($user->company_id);
 
         $sortField = $request->input('sortField');
-        $sortOrder = $request->input('sortOrder', 'desc');
+        $sortOrder = $request->input('sortOrder', 'asc');
 
         $documents = $documents
             ->when($query, function($q) use ($query) {

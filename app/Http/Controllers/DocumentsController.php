@@ -35,7 +35,7 @@ class DocumentsController extends Controller
         $documents->forCompany($user->company_id);
 
         $sortField = $request->input('sortField');
-        $sortOrder = $request->input('sortOrder', 'desc');
+        $sortOrder = $request->input('sortOrder', 'asc');
 
         $documents = $documents
             ->when($query, function($q) use ($query) {
@@ -396,37 +396,21 @@ class DocumentsController extends Controller
         return redirect()->route('documents.index')->with('success', 'Document deleted successfully');
     }
 
+
     /**
-     * Serve document thumbnail (PNG file)
+     * Helper to get the full file path for a document asset (e.g. thumbnail, preview)
      */
-    public function thumbnail($id)
+    private function getDocumentFilePath($document)
     {
-        $document = Document::with(['category', 'subcategory'])->findOrFail($id);
-        
-        // Check company authorization
-        $user = auth()->user();
-        if ($document->company_id !== $user->company_id) {
-            abort(403, 'Unauthorized access to document from another company.');
-        }
-        
-        // Get documents storage path from environment
         $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
         if ($document->template) {
             $documentsPath = env('CONTENTCONNECT_STORAGE_TEMPLATES');
-        } else {
-            // If it's a document, use documents storage path
-            $documentsPath = env('CONTENTCONNECT_STORAGE_DOCUMENTS');
         }
-        
-        // Replace company placeholder
         $documentsPath = str_replace('{company}', $document->company->name, $documentsPath);
-        
         if (!$documentsPath) {
             Log::error('Documents storage path not configured in environment');
-            abort(404);
+            return null;
         }
-        
-        // Construct document folder structure based on category and subcategory
         $documentFolderPath = '';
         if ($document->category) {
             $documentFolderPath .= $document->category->name;
@@ -434,20 +418,50 @@ class DocumentsController extends Controller
                 $documentFolderPath .= '/' . $document->subcategory->name;
             }
         }
-        
-        // Construct thumbnail file path
-        $thumbnailPath = $documentsPath . ($documentFolderPath ? '/' . $documentFolderPath : '') . '/' . $document->file_name . '.png';
-        
-        // Check if thumbnail exists
+        return $documentsPath . ($documentFolderPath ? '/' . $documentFolderPath : '') . '/' . $document->file_name;
+    }
+
+    /**
+     * Serve document thumbnail (PNG file)
+     */
+    public function thumbnail($id)
+    {
+        $document = Document::with(['category', 'subcategory'])->findOrFail($id);
+        // Check company authorization
+        $user = auth()->user();
+        if ($document->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to document from another company.');
+        }
+        $thumbnailPath = $this->getDocumentFilePath($document) . ".png";
         if (!file_exists($thumbnailPath)) {
-            // Return a default "no thumbnail" image or 404
             abort(404);
         }
-        
-        // Serve the image
         return response()->file($thumbnailPath, [
             'Content-Type' => 'image/png',
-            'Cache-Control' => 'public, max-age=31536000', // Cache for 1 year
+            'Cache-Control' => 'public, max-age=31536000',
+        ]);
+    }
+
+
+    /**
+     * Serve document preview (JPG file)
+     */
+    public function preview($id, $pageIndex)
+    {
+        $document = Document::with(['category', 'subcategory'])->findOrFail($id);
+        // Check company authorization
+        $user = auth()->user();
+        if ($document->company_id !== $user->company_id) {
+            abort(403, 'Unauthorized access to document from another company.');
+        }
+        $suffix = ($pageIndex === '0') ? '' : $pageIndex;
+        $previewPath = $this->getDocumentFilePath($document) . $suffix . ".png";
+        if (!file_exists($previewPath)) {
+            abort(404);
+        }
+        return response()->file($previewPath, [
+            'Content-Type' => 'image/jpeg',
+            'Cache-Control' => 'public, max-age=31536000',
         ]);
     }
 

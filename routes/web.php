@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SubCategoriesController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\TranslateController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -60,12 +61,16 @@ Route::middleware('auth')->group(function () {
         Route::delete("/{id}", [\App\Http\Controllers\UsersController::class, 'destroy'])->middleware('permission:user-delete');
     });
 
+    Route::get('/webeditor', [\App\Http\Controllers\WebEditorController::class, 'index'])->name('webeditor.index')->middleware('permission:document-edit');
+
     Route::prefix('documents')->group(function () {
             Route::get('/', [\App\Http\Controllers\DocumentsController::class, 'index'])->name('documents.index')->middleware('permission:document-index');
 
             Route::get('/create', [\App\Http\Controllers\DocumentsController::class, 'create'])->middleware('permission:document-create');
             
+
             Route::get('/thumbnail/{id}', [\App\Http\Controllers\DocumentsController::class, 'thumbnail'])->name('documents.thumbnail')->middleware('permission:document-index');
+            Route::get('/preview/{id}/{page}', [\App\Http\Controllers\DocumentsController::class, 'preview'])->name('documents.preview')->middleware('permission:document-index');
 
             Route::get('/download/{id}', [\App\Http\Controllers\DocumentsController::class, 'download'])->name('documents.download')->middleware('permission:document-index');
 
@@ -178,6 +183,8 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/sessions', [\App\Http\Controllers\SessionController::class, 'index'])->middleware('permission:superadmin')->name('sessions.index');
+    Route::post('/translate', [TranslateController::class, 'translate'])->middleware('auth');
+    Route::get('/translate', fn() => Inertia::render('Translate/TranslatePage'))->name('translate.page');
 });
 
 // User company change routes for SuperAdmin
