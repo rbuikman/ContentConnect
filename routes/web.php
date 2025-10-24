@@ -176,6 +176,8 @@ Route::middleware('auth')->group(function () {
 
         Route::delete("/{company}", [CompanyController::class, 'destroy'])->name('companies.destroy')->middleware('permission:company-delete');
     });
+
+    Route::get('/sessions', [\App\Http\Controllers\SessionController::class, 'index'])->middleware('permission:superadmin')->name('sessions.index');
 });
 
 // User company change routes for SuperAdmin

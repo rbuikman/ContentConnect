@@ -1,4 +1,6 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
+import React from 'react';
+import ListSessions from '@/Components/ListSessions';
 import AboutBox from '@/Components/AboutBox';
 import ChangeCompanyModal from '@/Components/ChangeCompanyModal';
 
@@ -112,7 +114,6 @@ export default function Authenticated({
                                     </Dropdown.Trigger>
 
                                     <Dropdown.Content>
-                                        <hr className="my-1 border-gray-200" />
 
                                         {hasPermission('document-index') && (
                                             <Dropdown.Link href={route('documents.index')} className="flex items-center gap-2">
@@ -148,6 +149,12 @@ export default function Authenticated({
                                                     Change Company
                                                 </button>
                                             </>
+                                        )}
+                                        {hasPermission('superadmin') && (
+                                            <Dropdown.Link href={route('sessions.index')} className="flex items-center gap-2">
+                                                <FolderIcon className="h-4 w-4" />
+                                                Active Sessions
+                                            </Dropdown.Link>
                                         )}
 
                                         {hasPermission('company-index') && (
