@@ -10,10 +10,16 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('documents', function (Blueprint $table) {
-            $table->renameColumn('modified_at', 'updated_at');
-            $table->renameColumn('updated_by', 'updated_by');
-        });
+        if (Schema::hasColumn('documents', 'modified_at')) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->renameColumn('modified_at', 'updated_at');
+            });
+        }
+        if (Schema::hasColumn('documents', 'updated_by')) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->renameColumn('updated_by', 'updated_by');
+            });
+        }
     }
 
     /**
@@ -21,9 +27,15 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table('documents', function (Blueprint $table) {
-            $table->renameColumn('updated_at', 'modified_at');
-            $table->renameColumn('updated_by', 'updated_by');
-        });
+        if (Schema::hasColumn('documents', 'updated_at')) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->renameColumn('updated_at', 'modified_at');
+            });
+        }
+        if (Schema::hasColumn('documents', 'updated_by')) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->renameColumn('updated_by', 'updated_by');
+            });
+        }
     }
 };
