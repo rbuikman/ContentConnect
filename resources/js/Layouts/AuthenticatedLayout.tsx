@@ -74,7 +74,7 @@ export default function Authenticated({
     const currentCompanyId = user?.company_id;
     return (
         <div className="min-h-screen bg-gray-100">
-            <nav className="border-b border-gray-100 bg-white">
+            <nav className="border-b border-gray-100 bg-white sticky top-0 z-50">
                 <div className="mx-auto w-[95%] px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex">
@@ -383,7 +383,7 @@ export default function Authenticated({
             </nav>
 
             {header && (
-                <header className="bg-white shadow">
+                <header className="bg-white shadow sticky top-[64px] z-40">
                     <div className="mx-auto w-[95%] px-4 py-2 sm:px-6 lg:px-8">
                         {<h2 className="text-xl font-semibold leading-tight text-gray-800">{header}</h2>}
                     </div>
